@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ερωτηματολόγια Ασθενούς | Δρ. Παπαθεοδοσίου</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="header-inner">
+      <img src="logo/logo.png" alt="Λογότυπο Δρ. Παπαθεοδοσίου" class="logo">
+      <div class="header-text">
+        <h1>Ερωτηματολόγια Ασθενούς</h1>
+        <p class="subtitle">Δρ. Παπαθεοδοσίου — Ψυχιατρική Κλινική</p>
+      </div>
+    </div>
+  </header>
+
+  <main class="container" id="app">
+    <!-- Welcome screen -->
+    <section id="screen-welcome" class="screen active">
+      <div class="card welcome-card">
+        <h2>Καλώς ήρθατε</h2>
+        <p class="welcome-text">
+          Παρακαλούμε συμπληρώστε τα παρακάτω στοιχεία και απαντήστε στα 6 ερωτηματολόγια.
+          Οι απαντήσεις σας θα αποθηκευτούν με ασφάλεια για τη σημερινή σας επίσκεψη.
+        </p>
+        <form id="patient-form" class="patient-form" novalidate>
+          <div class="form-group">
+            <label for="patient-name">Ονοματεπώνυμο <span class="required">*</span></label>
+            <input type="text" id="patient-name" name="name" required autocomplete="name" placeholder="π.χ. Μαρία Παπαδοπούλου">
+          </div>
+          <div class="form-group">
+            <label for="patient-date">Ημερομηνία <span class="required">*</span></label>
+            <input type="date" id="patient-date" name="date" required>
+          </div>
+          <button type="submit" class="btn btn-primary btn-lg">Έναρξη Ερωτηματολογίων</button>
+        </form>
+      </div>
+    </section>
+
+    <!-- Questionnaire screen -->
+    <section id="screen-questionnaire" class="screen">
+      <div class="progress-bar-wrapper">
+        <div class="progress-info">
+          <span id="progress-label">Ερωτηματολόγιο 1 από 6</span>
+          <span id="progress-percent">0%</span>
+        </div>
+        <div class="progress-bar">
+          <div class="progress-fill" id="progress-fill"></div>
+        </div>
+        <div class="questionnaire-dots" id="questionnaire-dots"></div>
+      </div>
+
+      <div class="card questionnaire-card">
+        <div class="questionnaire-header">
+          <span class="questionnaire-badge" id="q-badge"></span>
+          <h2 id="q-title"></h2>
+          <p class="instructions" id="q-instructions"></p>
+        </div>
+        <form id="questionnaire-form" class="questionnaire-form"></form>
+        <div class="form-actions">
+          <button type="button" class="btn btn-secondary" id="btn-prev" disabled>Προηγούμενο</button>
+          <button type="button" class="btn btn-primary" id="btn-next">Επόμενο</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Review screen -->
+    <section id="screen-review" class="screen">
+      <div class="card">
+        <h2>Ολοκλήρωση</h2>
+        <p class="welcome-text">Έχετε ολοκληρώσει όλα τα ερωτηματολόγια. Παρακαλούμε ελέγξτε τα στοιχεία σας και υποβάλετε.</p>
+        <div class="review-summary" id="review-summary"></div>
+        <div class="form-actions">
+          <button type="button" class="btn btn-secondary" id="btn-back-edit">Επεξεργασία</button>
+          <button type="button" class="btn btn-primary btn-lg" id="btn-submit">Υποβολή Απαντήσεων</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Success screen -->
+    <section id="screen-success" class="screen">
+      <div class="card success-card">
+        <div class="success-icon">✓</div>
+        <h2>Ευχαριστούμε!</h2>
+        <p>Οι απαντήσεις σας αποθηκεύτηκαν επιτυχώς.</p>
+        <p class="success-detail" id="success-detail"></p>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="footer-inner">
+      <p>Υψηλάντου 31, Αθήνα 10675</p>
+      <p>
+        <a href="https://dr-papatheodosiou.gr" target="_blank" rel="noopener">dr-papatheodosiou.gr</a>
+        &nbsp;·&nbsp; Τ. 213 04 86 332
+        &nbsp;·&nbsp; <a href="mailto:info@drpapatheodosiou.com">info@drpapatheodosiou.com</a>
+        &nbsp;·&nbsp; <a href="admin.html">Admin</a>
+      </p>
+    </div>
+  </footer>
+
+  <div class="toast" id="toast" role="alert" aria-live="polite"></div>
+  <div class="loading-overlay" id="loading-overlay" hidden>
+    <div class="spinner"></div>
+    <p>Αποθήκευση απαντήσεων…</p>
+  </div>
+
+  <script src="js/config.js"></script>
+  <script src="js/scoring.js"></script>
+  <script src="js/renderer.js"></script>
+  <script src="js/sheets.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

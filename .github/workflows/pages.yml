@@ -1,0 +1,47 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Create config.js from secret
+        run: |
+          if [ -z "${{ secrets.GOOGLE_SCRIPT_URL }}" ]; then
+            echo "::error::Add GOOGLE_SCRIPT_URL in repo Settings → Secrets → Actions"
+            exit 1
+          fi
+          cat > js/config.js << 'EOF'
+          const CONFIG = {
+            GOOGLE_SCRIPT_URL: 'SCRIPT_URL_PLACEHOLDER',
+          };
+          EOF
+          sed -i "s|SCRIPT_URL_PLACEHOLDER|${{ secrets.GOOGLE_SCRIPT_URL }}|g" js/config.js
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

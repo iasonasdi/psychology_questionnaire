@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Panel | Ερωτηματολόγια Ασθενούς</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="css/admin.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="header-inner admin-header-inner">
+      <img src="logo/logo.png" alt="Λογότυπο" class="logo">
+      <div class="header-text">
+        <h1>Admin Panel</h1>
+        <p class="subtitle">Δρ. Παπαθεοδοσίου — Διαχείριση Απαντήσεων</p>
+      </div>
+      <a href="index.html" class="btn btn-secondary admin-back-btn">← Ερωτηματολόγια</a>
+    </div>
+  </header>
+
+  <main class="container admin-container" id="admin-app">
+    <!-- Login -->
+    <section id="admin-login" class="admin-screen">
+      <div class="card login-card">
+        <h2>Σύνδεση Admin</h2>
+        <p class="welcome-text">Εισάγετε τον κωδικό πρόσβασης για να δείτε τις απαντήσεις.</p>
+        <form id="login-form" class="patient-form">
+          <div class="form-group">
+            <label for="admin-password">Κωδικός</label>
+            <input type="password" id="admin-password" required autocomplete="current-password">
+          </div>
+          <button type="submit" class="btn btn-primary btn-lg">Είσοδος</button>
+        </form>
+        <p class="login-error" id="login-error" hidden>Λάθος κωδικός πρόσβασης.</p>
+      </div>
+    </section>
+
+    <!-- Dashboard -->
+    <section id="admin-dashboard" class="admin-screen">
+      <div class="admin-stats" id="admin-stats">
+        <div class="stat-card">
+          <span class="stat-value" id="stat-total">—</span>
+          <span class="stat-label">Συνολικές Υποβολές</span>
+        </div>
+      </div>
+
+      <div class="card admin-search-card">
+        <h2>Αναζήτηση Ασθενούς</h2>
+        <div class="search-row">
+          <input type="search" id="search-input" placeholder="Όνομα ή επώνυμο…" autocomplete="off">
+          <button type="button" class="btn btn-primary" id="btn-search">Αναζήτηση</button>
+          <button type="button" class="btn btn-secondary" id="btn-clear">Όλοι</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="list-header">
+          <h2>Κατάλογος Ασθενών</h2>
+          <button type="button" class="btn btn-secondary btn-sm" id="btn-refresh">Ανανέωση</button>
+        </div>
+        <div id="patient-list" class="patient-list">
+          <p class="loading-text">Φόρτωση…</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Patient detail -->
+    <section id="admin-detail" class="admin-screen">
+      <button type="button" class="btn btn-secondary btn-back" id="btn-back-list">← Πίσω στη λίστα</button>
+
+      <div class="card patient-overview" id="patient-overview"></div>
+
+      <div class="summary-grid" id="summary-grid"></div>
+
+      <div id="questionnaire-details"></div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="footer-inner">
+      <p>Υψηλάντου 31, Αθήνα 10675 · Admin Panel</p>
+    </div>
+  </footer>
+
+  <div class="toast" id="toast" role="alert"></div>
+
+  <script src="js/config.js"></script>
+  <script src="js/scoring.js"></script>
+  <script src="js/admin.js"></script>
+</body>
+</html>

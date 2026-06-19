@@ -1,0 +1,37 @@
+{
+  "title": "Ερωτηματολόγια Ασθενούς",
+  "subtitle": "Δρ. Παπαθεοδοσίου — Ψυχιατρική Κλινική",
+  "language": "el",
+  "questionnaires": [
+    {
+      "id": "q01-adhd",
+      "file": "q01-adhd.json",
+      "order": 1
+    },
+    {
+      "id": "q02-mdq",
+      "file": "q02-mdq.json",
+      "order": 2
+    },
+    {
+      "id": "q03-sds",
+      "file": "q03-sds.json",
+      "order": 3
+    },
+    {
+      "id": "q04-pq16",
+      "file": "q04-pq16.json",
+      "order": 4
+    },
+    {
+      "id": "q05-isi",
+      "file": "q05-isi.json",
+      "order": 5
+    },
+    {
+      "id": "q06-hads",
+      "file": "q06-hads.json",
+      "order": 6
+    }
+  ]
+}

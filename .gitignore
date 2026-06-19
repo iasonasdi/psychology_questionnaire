@@ -1,0 +1,16 @@
+# Local secrets — never commit
+js/config.js
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/
+
+# Env files
+.env
+.env.*
+
+# Logs
+*.log
