@@ -43,7 +43,8 @@ const Admin = {
 
   async init() {
     if (!CONFIG.GOOGLE_SCRIPT_URL) {
-      this.showToast('Ρυθμίστε το GOOGLE_SCRIPT_URL στο config.js', true);
+      this.showToast('Δεν έχει ρυθμιστεί το GOOGLE_SCRIPT_URL. Ελέγξτε το deploy στο GitHub Actions.', true);
+      this.showLogin();
       return;
     }
 

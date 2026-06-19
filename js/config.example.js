@@ -1,8 +1,11 @@
 /**
- * Copy this file to config.js and fill in your values.
- * config.js is gitignored and never committed.
+ * Base config (committed). Do not put secrets here.
+ *
+ * Local dev: create js/config.js (gitignored) with:
+ *   CONFIG.GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/.../exec';
+ *
+ * Production: GitHub Actions writes js/config.js during deploy.
  */
-const CONFIG = {
-  // Your Google Apps Script Web App URL (Deploy → Web app → copy URL)
-  GOOGLE_SCRIPT_URL: 'https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec',
+var CONFIG = {
+  GOOGLE_SCRIPT_URL: '',
 };
