@@ -43,6 +43,8 @@ python -m http.server 8080
 4. **Deploy → Web app** (Execute as: Me, Access: Anyone)
 5. Αντιγράψτε το URL στο `js/config.js` (τοπικά) ή στο GitHub Secret (για Pages)
 
+Κάθε έκδοση δημιουργεί **ξεχωριστό φύλλο** στο spreadsheet (π.χ. `PQ-7C81705F_20260622`). Αν βλέπετε μόνο κενό `Φύλλο1`, τα δεδομένα είναι συνήθως σε **κρυφά φύλλα** από παλιότερη έκδοση: στο Apps Script εκτελέστε μία φορά τη συνάρτηση `revealAllPatientSheets` και κάντε **redeploy** με τον τελευταίο κώδικα ώστε τα νέα φύλλα να μην κρύβονται.
+
 ## GitHub Pages (online hosting)
 
 ### Χρειάζεται public repository;

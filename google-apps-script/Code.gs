@@ -123,6 +123,22 @@ function testSpreadsheet() {
   Logger.log('URL: ' + ss.getUrl());
 }
 
+/**
+ * Run once from Apps Script if older versions hid patient sheets.
+ * Extensions → Apps Script → select revealAllPatientSheets → Run
+ */
+function revealAllPatientSheets() {
+  const ss = getSpreadsheet_();
+  var count = 0;
+  ss.getSheets().forEach(function(sheet) {
+    if (readPatientMeta_(sheet)) {
+      sheet.showSheet();
+      count++;
+    }
+  });
+  Logger.log('Revealed ' + count + ' patient sheet(s) in: ' + ss.getName());
+}
+
 function listPatients_() {
   const ss = getSpreadsheet_();
   const sheets = ss.getSheets();
@@ -412,9 +428,6 @@ function generateQuestionnaire_(date) {
     patient: patient,
     questionnaires: [],
   });
-  if (ss.getSheets().length > 1) {
-    sheet.hideSheet();
-  }
 
   return {
     success: true,

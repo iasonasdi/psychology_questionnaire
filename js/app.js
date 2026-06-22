@@ -263,7 +263,7 @@ const App = {
   },
 
   _getQuestionnaireLabel(index) {
-    return `Questionnaire ${index + 1}`;
+    return `Ερωτηματολόγιο ${index + 1}`;
   },
 
   _showToast(message, isError = false) {
