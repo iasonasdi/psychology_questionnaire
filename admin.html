@@ -33,8 +33,9 @@
             <label for="admin-password">Κωδικός</label>
             <input type="password" id="admin-password" required autocomplete="current-password">
           </div>
-          <button type="submit" class="btn btn-primary btn-lg">Είσοδος</button>
+          <button type="submit" class="btn btn-primary btn-lg" id="login-submit">Είσοδος</button>
         </form>
+        <p class="login-loading" id="login-loading" hidden>Έλεγχος κωδικού...</p>
         <p class="login-error" id="login-error" hidden>Λάθος κωδικός πρόσβασης.</p>
       </div>
     </section>
@@ -44,14 +45,33 @@
       <div class="admin-stats" id="admin-stats">
         <div class="stat-card">
           <span class="stat-value" id="stat-total">—</span>
-          <span class="stat-label">Συνολικές Υποβολές</span>
+          <span class="stat-label">Συνολικά Εκδοθέντα</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-value" id="stat-pending">—</span>
+          <span class="stat-label">Σε Εκκρεμότητα</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-value" id="stat-submitted">—</span>
+          <span class="stat-label">Υποβληθέντα</span>
         </div>
       </div>
 
-      <div class="card admin-search-card">
-        <h2>Αναζήτηση Ασθενούς</h2>
+      <div class="card admin-generate-card">
+        <div class="list-header">
+          <h2>Έκδοση Νέου Ερωτηματολογίου</h2>
+          <button type="button" class="btn btn-primary" id="btn-generate">Generate</button>
+        </div>
         <div class="search-row">
-          <input type="search" id="search-input" placeholder="Όνομα ή επώνυμο…" autocomplete="off">
+          <input type="date" id="generate-date">
+        </div>
+        <div id="generated-result" class="generated-result" hidden></div>
+      </div>
+
+      <div class="card admin-search-card">
+        <h2>Αναζήτηση Κωδικού</h2>
+        <div class="search-row">
+          <input type="search" id="search-input" placeholder="Κωδικός, κατάσταση ή ημερομηνία…" autocomplete="off">
           <button type="button" class="btn btn-primary" id="btn-search">Αναζήτηση</button>
           <button type="button" class="btn btn-secondary" id="btn-clear">Όλοι</button>
         </div>
@@ -59,7 +79,7 @@
 
       <div class="card">
         <div class="list-header">
-          <h2>Κατάλογος Ασθενών</h2>
+          <h2>Κατάλογος Εκδόσεων</h2>
           <button type="button" class="btn btn-secondary btn-sm" id="btn-refresh">Ανανέωση</button>
         </div>
         <div id="patient-list" class="patient-list">

@@ -15,6 +15,7 @@ const App = {
     this._cacheElements();
     this._bindEvents();
     await this._loadQuestionnaires();
+    this._prefillPatientFields();
     this._setDefaultDate();
   },
 
@@ -65,6 +66,23 @@ const App = {
     }
   },
 
+  _prefillPatientFields() {
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get('code');
+    const date = params.get('date');
+    const codeInput = document.getElementById('patient-code');
+    const dateInput = document.getElementById('patient-date');
+
+    if (code) {
+      codeInput.value = code.trim().toUpperCase();
+      codeInput.readOnly = true;
+    }
+
+    if (date) {
+      dateInput.value = date;
+    }
+  },
+
   async _loadQuestionnaires() {
     const manifestRes = await fetch('data/manifest.json');
     const manifest = await manifestRes.json();
@@ -88,7 +106,7 @@ const App = {
     this.state.questionnaires.forEach((_, i) => {
       const dot = document.createElement('div');
       dot.className = 'dot';
-      dot.title = this.state.questionnaires[i].shortTitle;
+      dot.title = this._getQuestionnaireLabel(i);
       dots.appendChild(dot);
     });
   },
@@ -109,17 +127,17 @@ const App = {
   },
 
   _startQuestionnaires() {
-    const name = document.getElementById('patient-name').value.trim();
+    const code = document.getElementById('patient-code').value.trim().toUpperCase();
     const date = document.getElementById('patient-date').value;
 
-    if (!name) {
-      document.getElementById('patient-name').classList.add('error');
-      this._showToast('Παρακαλώ εισάγετε το ονοματεπώνυμό σας.', true);
+    if (!code) {
+      document.getElementById('patient-code').classList.add('error');
+      this._showToast('Παρακαλώ εισάγετε τον κωδικό σας.', true);
       return;
     }
 
-    document.getElementById('patient-name').classList.remove('error');
-    this.state.patient = { name, date };
+    document.getElementById('patient-code').classList.remove('error');
+    this.state.patient = { code, date };
     this.state.currentIndex = 0;
     this._showScreen('questionnaire');
     this._renderCurrentQuestionnaire();
@@ -129,9 +147,10 @@ const App = {
     const q = this.state.questionnaires[this.state.currentIndex];
     const total = this.state.questionnaires.length;
     const idx = this.state.currentIndex;
+    const questionnaireLabel = this._getQuestionnaireLabel(idx);
 
-    this.elements.qBadge.textContent = q.shortTitle;
-    this.elements.qTitle.textContent = q.title;
+    this.elements.qBadge.textContent = questionnaireLabel;
+    this.elements.qTitle.textContent = questionnaireLabel;
     this.elements.qInstructions.textContent = q.instructions;
 
     const percent = Math.round(((idx) / total) * 100);
@@ -197,7 +216,7 @@ const App = {
 
     let html = `
       <div class="review-patient">
-        ${patient.name} — ${this._formatDate(patient.date)}
+        ${patient.code} — ${this._formatDate(patient.date)}
       </div>
     `;
 
@@ -206,7 +225,7 @@ const App = {
       const count = Object.keys(qAnswers).filter((k) => qAnswers[k] !== undefined && qAnswers[k] !== '').length;
       html += `
         <div class="review-item">
-          <span>${q.shortTitle}: ${q.title}</span>
+          <span>${this._getQuestionnaireLabel(this.state.questionnaires.indexOf(q))}</span>
           <span class="status">✓ ${count} απαντήσεις</span>
         </div>
       `;
@@ -228,7 +247,7 @@ const App = {
       );
 
       this.elements.successDetail.textContent =
-        `${this.state.patient.name} — ${this._formatDate(this.state.patient.date)}`;
+        `${this.state.patient.code} — ${this._formatDate(this.state.patient.date)}`;
       this._showScreen('success');
     } catch (err) {
       this._showToast(err.message || 'Σφάλμα κατά την αποθήκευση. Δοκιμάστε ξανά.', true);
@@ -241,6 +260,10 @@ const App = {
     if (!dateStr) return '';
     const [y, m, d] = dateStr.split('-');
     return `${d}/${m}/${y}`;
+  },
+
+  _getQuestionnaireLabel(index) {
+    return `Questionnaire ${index + 1}`;
   },
 
   _showToast(message, isError = false) {

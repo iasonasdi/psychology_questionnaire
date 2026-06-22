@@ -49,6 +49,7 @@ const Admin = {
     }
 
     this.bindEvents();
+    this.setDefaultGenerateDate();
 
     if (this.isLoggedIn()) {
       await this.startDashboard();
@@ -58,9 +59,18 @@ const Admin = {
   },
 
   async handleLogin() {
+    const form = document.getElementById('login-form');
     const password = document.getElementById('admin-password').value;
     const errorEl = document.getElementById('login-error');
+    const loadingEl = document.getElementById('login-loading');
+    const passwordInput = document.getElementById('admin-password');
+    const submitBtn = document.getElementById('login-submit');
     errorEl.hidden = true;
+    loadingEl.hidden = false;
+    form.setAttribute('aria-busy', 'true');
+    passwordInput.disabled = true;
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Έλεγχος...';
 
     sessionStorage.setItem('admin_key', password);
 
@@ -70,13 +80,19 @@ const Admin = {
     } catch {
       sessionStorage.removeItem('admin_key');
       errorEl.hidden = false;
+    } finally {
+      loadingEl.hidden = true;
+      form.removeAttribute('aria-busy');
+      passwordInput.disabled = false;
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Είσοδος';
     }
   },
 
   async startDashboard() {
     await this.loadQuestionnaireDefs();
     this.showDashboard();
-    await this.loadPatients();
+    await Promise.all([this.loadStats(), this.loadPatients()]);
   },
 
   showLogin() {
@@ -104,13 +120,32 @@ const Admin = {
       e.preventDefault();
       this.handleLogin();
     });
+    document.getElementById('btn-generate').addEventListener('click', () => this.generateQuestionnaire());
     document.getElementById('btn-search').addEventListener('click', () => this.search());
     document.getElementById('btn-clear').addEventListener('click', () => this.loadPatients());
-    document.getElementById('btn-refresh').addEventListener('click', () => this.loadPatients());
+    document.getElementById('btn-refresh').addEventListener('click', () => this.refreshDashboard());
     document.getElementById('btn-back-list').addEventListener('click', () => this.showDashboard());
     document.getElementById('search-input').addEventListener('keydown', (e) => {
       if (e.key === 'Enter') this.search();
     });
+  },
+
+  setDefaultGenerateDate() {
+    const dateInput = document.getElementById('generate-date');
+    if (dateInput && !dateInput.value) {
+      dateInput.value = new Date().toISOString().split('T')[0];
+    }
+  },
+
+  async refreshDashboard() {
+    await Promise.all([this.loadStats(), this.loadPatients()]);
+  },
+
+  async loadStats() {
+    const data = await this.fetchApi('stats');
+    document.getElementById('stat-total').textContent = data.totalPatients || 0;
+    document.getElementById('stat-pending').textContent = data.pending || 0;
+    document.getElementById('stat-submitted').textContent = data.submitted || 0;
   },
 
   async loadPatients() {
@@ -121,7 +156,6 @@ const Admin = {
     try {
       const data = await this.fetchApi('list');
       this.state.patients = data.patients || [];
-      document.getElementById('stat-total').textContent = data.total || 0;
       this.renderPatientList(this.state.patients);
     } catch (err) {
       list.innerHTML = `<p class="error-text">${err.message}</p>`;
@@ -153,22 +187,34 @@ const Admin = {
     list.innerHTML = patients
       .map(
         (p) => `
-      <button type="button" class="patient-row" data-sheet="${this.escape(p.sheet)}">
-        <div class="patient-row-main">
-          <span class="patient-name">${this.escape(p.name)}</span>
-          <span class="patient-date">${this.formatDate(p.date)}</span>
+      <div class="patient-row-card">
+        <button type="button" class="patient-row" data-sheet="${this.escape(p.sheet)}">
+          <div class="patient-row-main">
+            <span class="patient-name">${this.escape(p.code || p.name || p.sheet)}</span>
+            <span class="patient-date">${this.formatDate(p.date)}</span>
+          </div>
+          <div class="patient-row-meta">
+            <span>${this.renderStatusLabel(p.status)} · Εκδόθηκε: ${this.formatDateTime(p.issuedAt)}</span>
+            <span>${p.submittedAt ? `Υποβλήθηκε: ${this.formatDateTime(p.submittedAt)}` : 'Δεν έχει υποβληθεί ακόμα'}</span>
+            <span class="patient-arrow">→</span>
+          </div>
+        </button>
+        <div class="patient-row-actions">
+          ${p.code ? `<button type="button" class="btn btn-secondary btn-sm btn-inline-copy" data-link="${this.escape(this.buildPatientLink(p.code, p.date))}">Copy Link</button>` : ''}
         </div>
-        <div class="patient-row-meta">
-          <span>Υποβλήθηκε: ${this.formatDateTime(p.submittedAt)}</span>
-          <span class="patient-arrow">→</span>
-        </div>
-      </button>
+      </div>
     `
       )
       .join('');
 
     list.querySelectorAll('.patient-row').forEach((row) => {
       row.addEventListener('click', () => this.openPatient(row.dataset.sheet));
+    });
+    list.querySelectorAll('.btn-inline-copy').forEach((btn) => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        await this.copyToClipboard(btn.dataset.link, 'Το link αντιγράφηκε.');
+      });
     });
   },
 
@@ -199,11 +245,23 @@ const Admin = {
     const evaluated = Scoring.evaluateAll(this.state.questionnaireDefs, submissions);
 
     document.getElementById('patient-overview').innerHTML = `
-      <h2>${this.escape(patient.name)}</h2>
+      <h2>${this.escape(patient.code || data.sheet)}</h2>
       <div class="overview-grid">
         <div class="overview-item">
-          <span class="overview-label">Ημερομηνία ραντεβού</span>
+          <span class="overview-label">Κωδικός</span>
+          <span class="overview-value">${this.escape(patient.code || '—')}</span>
+        </div>
+        <div class="overview-item">
+          <span class="overview-label">Ημερομηνία</span>
           <span class="overview-value">${this.formatDate(patient.date)}</span>
+        </div>
+        <div class="overview-item">
+          <span class="overview-label">Εκδόθηκε</span>
+          <span class="overview-value">${this.formatDateTime(patient.issuedAt)}</span>
+        </div>
+        <div class="overview-item">
+          <span class="overview-label">Κατάσταση</span>
+          <span class="overview-value">${this.renderStatusLabel(patient.status)}</span>
         </div>
         <div class="overview-item">
           <span class="overview-label">Υποβολή ερωτηματολογίων</span>
@@ -213,6 +271,9 @@ const Admin = {
           <span class="overview-label">Ερωτηματολόγια</span>
           <span class="overview-value">${submissions.length} / 6</span>
         </div>
+      </div>
+      <div class="link-row">
+        <button type="button" class="btn btn-secondary btn-sm" data-copy-link="${this.escape(this.buildPatientLink(patient.code, patient.date))}">Αντιγραφή Link</button>
       </div>
     `;
 
@@ -282,6 +343,13 @@ const Admin = {
         </details>`;
       })
       .join('');
+
+    const copyBtn = document.querySelector('[data-copy-link]');
+    if (copyBtn) {
+      copyBtn.addEventListener('click', async () => {
+        await this.copyToClipboard(copyBtn.dataset.copyLink, 'Το link αντιγράφηκε.');
+      });
+    }
   },
 
   guessId(title) {
@@ -294,6 +362,33 @@ const Admin = {
     document.getElementById('admin-dashboard').classList.add('active');
     document.getElementById('admin-detail').classList.remove('active');
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  },
+
+  async generateQuestionnaire() {
+    const date = document.getElementById('generate-date').value;
+    const resultEl = document.getElementById('generated-result');
+    resultEl.hidden = false;
+    resultEl.innerHTML = '<p class="loading-text">Δημιουργία...</p>';
+
+    try {
+      const data = await this.fetchApi('generate', { date });
+      const link = this.buildPatientLink(data.code, data.date);
+      resultEl.innerHTML = `
+        <div class="generated-card">
+          <p><strong>Κωδικός:</strong> ${this.escape(data.code)}</p>
+          <p><strong>Ημερομηνία:</strong> ${this.escape(this.formatDate(data.date))}</p>
+          <p><strong>Link:</strong> <a href="${this.escape(link)}" target="_blank" rel="noopener">${this.escape(link)}</a></p>
+          <button type="button" class="btn btn-secondary btn-sm" id="btn-copy-generated">Αντιγραφή Link</button>
+        </div>
+      `;
+      document.getElementById('btn-copy-generated').addEventListener('click', async () => {
+        await this.copyToClipboard(link, 'Το link αντιγράφηκε.');
+      });
+      await this.refreshDashboard();
+    } catch (err) {
+      resultEl.innerHTML = `<p class="error-text">${this.escape(err.message)}</p>`;
+      this.showToast(err.message, true);
+    }
   },
 
   showDetail() {
@@ -324,6 +419,26 @@ const Admin = {
       });
     } catch {
       return iso;
+    }
+  },
+
+  renderStatusLabel(status) {
+    return status === 'submitted' ? 'Submitted' : 'Pending';
+  },
+
+  buildPatientLink(code, date) {
+    const url = new URL('index.html', window.location.href);
+    url.searchParams.set('code', code || '');
+    url.searchParams.set('date', date || '');
+    return url.toString();
+  },
+
+  async copyToClipboard(text, successMessage) {
+    try {
+      await navigator.clipboard.writeText(text);
+      this.showToast(successMessage || 'Αντιγράφηκε.');
+    } catch {
+      this.showToast('Δεν ήταν δυνατή η αντιγραφή.', true);
     }
   },
 

@@ -15,7 +15,7 @@
       <img src="logo/logo.png" alt="Λογότυπο Δρ. Παπαθεοδοσίου" class="logo">
       <div class="header-text">
         <h1>Ερωτηματολόγια Ασθενούς</h1>
-        <p class="subtitle">Δρ. Παπαθεοδοσίου — Ψυχιατρική Κλινική</p>
+        <p class="subtitle">Δρ. Παπαθεοδοσίου — Ψυχίατρος - Υπνίατρος</p>
       </div>
     </div>
   </header>
@@ -26,13 +26,13 @@
       <div class="card welcome-card">
         <h2>Καλώς ήρθατε</h2>
         <p class="welcome-text">
-          Παρακαλούμε συμπληρώστε τα παρακάτω στοιχεία και απαντήστε στα 6 ερωτηματολόγια.
+          Παρακαλούμε επιβεβαιώστε τον κωδικό και την ημερομηνία σας και απαντήστε στα 6 ερωτηματολόγια.
           Οι απαντήσεις σας θα αποθηκευτούν με ασφάλεια για τη σημερινή σας επίσκεψη.
         </p>
         <form id="patient-form" class="patient-form" novalidate>
           <div class="form-group">
-            <label for="patient-name">Ονοματεπώνυμο <span class="required">*</span></label>
-            <input type="text" id="patient-name" name="name" required autocomplete="name" placeholder="π.χ. Μαρία Παπαδοπούλου">
+            <label for="patient-code">Κωδικός <span class="required">*</span></label>
+            <input type="text" id="patient-code" name="code" required autocomplete="off" placeholder="π.χ. PQ-1A2B3C4D">
           </div>
           <div class="form-group">
             <label for="patient-date">Ημερομηνία <span class="required">*</span></label>
@@ -74,7 +74,7 @@
     <section id="screen-review" class="screen">
       <div class="card">
         <h2>Ολοκλήρωση</h2>
-        <p class="welcome-text">Έχετε ολοκληρώσει όλα τα ερωτηματολόγια. Παρακαλούμε ελέγξτε τα στοιχεία σας και υποβάλετε.</p>
+        <p class="welcome-text">Έχετε ολοκληρώσει όλα τα ερωτηματολόγια. Παρακαλούμε ελέγξτε τον κωδικό σας και υποβάλετε.</p>
         <div class="review-summary" id="review-summary"></div>
         <div class="form-actions">
           <button type="button" class="btn btn-secondary" id="btn-back-edit">Επεξεργασία</button>

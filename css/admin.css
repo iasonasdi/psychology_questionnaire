@@ -11,6 +11,22 @@
   text-align: center;
 }
 
+.login-loading {
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+  margin-top: 1rem;
+  text-align: center;
+}
+
+#login-form[aria-busy="true"] {
+  opacity: 0.8;
+}
+
+#login-submit:disabled,
+#admin-password:disabled {
+  cursor: wait;
+}
+
 /* Admin panel styles */
 
 .admin-container {
@@ -73,6 +89,29 @@
   margin-bottom: 1rem;
 }
 
+.admin-generate-card {
+  margin-bottom: 1.5rem;
+}
+
+.generated-result {
+  margin-top: 1rem;
+}
+
+.generated-card {
+  background: var(--color-bg);
+  border-radius: var(--radius-sm);
+  padding: 1rem;
+}
+
+.generated-card p {
+  margin-bottom: 0.5rem;
+  word-break: break-word;
+}
+
+.generated-card p:last-child {
+  margin-bottom: 1rem;
+}
+
 .search-row {
   display: flex;
   gap: 0.75rem;
@@ -119,6 +158,12 @@
   gap: 0.5rem;
 }
 
+.patient-row-card {
+  display: flex;
+  gap: 0.75rem;
+  align-items: stretch;
+}
+
 .patient-row {
   display: block;
   width: 100%;
@@ -130,6 +175,15 @@
   cursor: pointer;
   font-family: var(--font);
   transition: all var(--transition);
+}
+
+.patient-row-actions {
+  display: flex;
+  align-items: center;
+}
+
+.btn-inline-copy {
+  white-space: nowrap;
 }
 
 .patient-row:hover {
@@ -160,6 +214,8 @@
 .patient-row-meta {
   display: flex;
   justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
   font-size: 0.8rem;
   color: var(--color-text-muted);
 }
@@ -202,6 +258,10 @@
   background: var(--color-bg);
   border-radius: var(--radius-sm);
   padding: 1rem;
+}
+
+.link-row {
+  margin-top: 1rem;
 }
 
 .overview-label {
@@ -385,6 +445,14 @@
   .patient-row-main {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .patient-row-card {
+    flex-direction: column;
+  }
+
+  .patient-row-actions {
+    justify-content: flex-end;
   }
 
   .q-count {

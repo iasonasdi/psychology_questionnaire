@@ -5,7 +5,7 @@ const SheetsAPI = {
   buildPayload(patient, questionnaires, allAnswers) {
     return {
       patient: {
-        name: patient.name,
+        code: patient.code,
         date: patient.date,
         submittedAt: new Date().toISOString(),
       },
