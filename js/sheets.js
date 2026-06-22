@@ -1,7 +1,35 @@
-/**
- * Submits questionnaire data to Google Sheets via Apps Script.
- */
 const SheetsAPI = {
+  async validateCode(code) {
+    if (!CONFIG.GOOGLE_SCRIPT_URL) {
+      throw new Error(
+        'Το Google Sheets URL δεν έχει ρυθμιστεί. Δείτε το αρχείο js/config.js.'
+      );
+    }
+
+    const url = new URL(CONFIG.GOOGLE_SCRIPT_URL);
+    url.searchParams.set('action', 'validate');
+    url.searchParams.set('code', String(code).trim().toUpperCase());
+
+    const response = await fetch(url.toString());
+    const data = await response.json();
+
+    if (!data.success) {
+      throw new Error(this._validateErrorMessage(data));
+    }
+
+    return data;
+  },
+
+  _validateErrorMessage(data) {
+    if (data.errorCode === 'already_submitted') {
+      return 'Αυτό το ερωτηματολόγιο έχει ήδη υποβληθεί.';
+    }
+    if (data.errorCode === 'not_found' || data.errorCode === 'invalid') {
+      return 'Ο κωδικός δεν είναι έγκυρος. Ελέγξτε τον κωδικό στο link που σας στάλθηκε.';
+    }
+    return data.error || 'Ο κωδικός δεν είναι έγκυρος.';
+  },
+
   buildPayload(patient, questionnaires, allAnswers) {
     return {
       patient: {

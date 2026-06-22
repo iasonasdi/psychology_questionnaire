@@ -168,6 +168,13 @@ body {
   border-color: var(--color-error);
 }
 
+.code-error {
+  color: var(--color-error);
+  font-size: 0.9rem;
+  margin-top: 1rem;
+  text-align: center;
+}
+
 /* Buttons */
 .btn {
   display: inline-flex;

@@ -106,6 +106,10 @@ function doGet(e) {
       return jsonResponse_(generateQuestionnaire_(e.parameter.date || ''));
     }
 
+    if (action === 'validate') {
+      return jsonResponse_(validateCode_(e.parameter.code || ''));
+    }
+
     const ss = getSpreadsheet_();
     return jsonResponse_({
       status: 'ok',
@@ -511,5 +515,38 @@ function buildSubmissionPatient_(issuedPatient, submittedPatient) {
     issuedAt: issuedPatient.issuedAt || '',
     submittedAt: new Date().toISOString(),
     status: STATUS_SUBMITTED,
+  };
+}
+
+function validateCode_(code) {
+  const normalized = String(code || '').trim().toUpperCase();
+  if (!normalized) {
+    return { success: false, errorCode: 'missing', error: 'Missing questionnaire code.' };
+  }
+
+  const ss = getSpreadsheet_();
+  const sheet = findSheetByCode_(ss, normalized);
+  if (!sheet) {
+    return { success: false, errorCode: 'not_found', error: 'Questionnaire code not found.' };
+  }
+
+  const meta = readSheetMeta_(sheet);
+  if (!meta || !meta.patient) {
+    return { success: false, errorCode: 'invalid', error: 'Issued questionnaire record is invalid.' };
+  }
+
+  if (meta.patient.status === STATUS_SUBMITTED) {
+    return {
+      success: false,
+      errorCode: 'already_submitted',
+      error: 'This questionnaire has already been submitted.',
+    };
+  }
+
+  return {
+    success: true,
+    code: meta.patient.code,
+    date: meta.patient.date,
+    status: meta.patient.status,
   };
 }

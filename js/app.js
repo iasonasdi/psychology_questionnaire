@@ -127,20 +127,43 @@ const App = {
   },
 
   _startQuestionnaires() {
+    this._startQuestionnairesAsync();
+  },
+
+  async _startQuestionnairesAsync() {
     const code = document.getElementById('patient-code').value.trim().toUpperCase();
     const date = document.getElementById('patient-date').value;
+    const codeInput = document.getElementById('patient-code');
+    const errorEl = document.getElementById('code-error');
+    const submitBtn = document.getElementById('btn-start');
 
     if (!code) {
-      document.getElementById('patient-code').classList.add('error');
+      codeInput.classList.add('error');
       this._showToast('Παρακαλώ εισάγετε τον κωδικό σας.', true);
       return;
     }
 
-    document.getElementById('patient-code').classList.remove('error');
-    this.state.patient = { code, date };
-    this.state.currentIndex = 0;
-    this._showScreen('questionnaire');
-    this._renderCurrentQuestionnaire();
+    codeInput.classList.remove('error');
+    errorEl.hidden = true;
+    submitBtn.disabled = true;
+    const originalLabel = submitBtn.textContent;
+    submitBtn.textContent = 'Έλεγχος κωδικού...';
+
+    try {
+      const result = await SheetsAPI.validateCode(code);
+      this.state.patient = { code: result.code || code, date: date || result.date };
+      this.state.currentIndex = 0;
+      this._showScreen('questionnaire');
+      this._renderCurrentQuestionnaire();
+    } catch (err) {
+      codeInput.classList.add('error');
+      errorEl.textContent = err.message;
+      errorEl.hidden = false;
+      this._showToast(err.message, true);
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.textContent = originalLabel;
+    }
   },
 
   _renderCurrentQuestionnaire() {
