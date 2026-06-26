@@ -40,6 +40,9 @@ const App = {
       btnNext: document.getElementById('btn-next'),
       btnBackEdit: document.getElementById('btn-back-edit'),
       btnSubmit: document.getElementById('btn-submit'),
+      gdprCheckbox: document.getElementById('gdpr-checkbox'),
+      gdprConsent: document.getElementById('gdpr-consent'),
+      gdprModal: document.getElementById('gdpr-modal'),
       reviewSummary: document.getElementById('review-summary'),
       successDetail: document.getElementById('success-detail'),
       toast: document.getElementById('toast'),
@@ -57,6 +60,25 @@ const App = {
     this.elements.btnNext.addEventListener('click', () => this._goNext());
     this.elements.btnBackEdit.addEventListener('click', () => this._goToQuestionnaire(this.state.questionnaires.length - 1));
     this.elements.btnSubmit.addEventListener('click', () => this._submitAll());
+
+    this.elements.gdprCheckbox.addEventListener('change', () => {
+      this.elements.btnSubmit.disabled = !this.elements.gdprCheckbox.checked;
+      this.elements.gdprConsent.classList.remove('invalid');
+    });
+
+    document.getElementById('gdpr-open').addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      this._openGdprModal();
+    });
+    document.getElementById('gdpr-close').addEventListener('click', () => this._closeGdprModal());
+    document.getElementById('gdpr-close-btn').addEventListener('click', () => this._closeGdprModal());
+    this.elements.gdprModal.addEventListener('click', (e) => {
+      if (e.target === this.elements.gdprModal) this._closeGdprModal();
+    });
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && !this.elements.gdprModal.hidden) this._closeGdprModal();
+    });
   },
 
   _setDefaultDate() {
@@ -123,6 +145,10 @@ const App = {
   _showScreen(name) {
     Object.values(this.elements.screens).forEach((s) => s.classList.remove('active'));
     this.elements.screens[name].classList.add('active');
+    this._scrollToTop();
+  },
+
+  _scrollToTop() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   },
 
@@ -192,6 +218,7 @@ const App = {
     form.appendChild(rendered);
 
     this._updateDots();
+    this._scrollToTop();
   },
 
   _saveCurrentAnswers() {
@@ -256,10 +283,30 @@ const App = {
 
     this.elements.reviewSummary.innerHTML = html;
     this.elements.progressFill.style.width = '100%';
+    this.elements.gdprCheckbox.checked = false;
+    this.elements.btnSubmit.disabled = true;
+    this.elements.gdprConsent.classList.remove('invalid');
     this._showScreen('review');
   },
 
+  _openGdprModal() {
+    this.elements.gdprModal.hidden = false;
+    document.body.style.overflow = 'hidden';
+  },
+
+  _closeGdprModal() {
+    this.elements.gdprModal.hidden = true;
+    document.body.style.overflow = '';
+  },
+
   async _submitAll() {
+    if (!this.elements.gdprCheckbox.checked) {
+      this.elements.gdprConsent.classList.add('invalid');
+      this._showToast('Παρακαλώ αποδεχτείτε την Πολιτική Απορρήτου πριν την υποβολή.', true);
+      this.elements.gdprConsent.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
+
     this.elements.loadingOverlay.hidden = false;
 
     try {

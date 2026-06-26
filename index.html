@@ -79,9 +79,18 @@
         <h2>Ολοκλήρωση</h2>
         <p class="welcome-text">Έχετε ολοκληρώσει όλα τα ερωτηματολόγια. Παρακαλούμε ελέγξτε τον κωδικό σας και υποβάλετε.</p>
         <div class="review-summary" id="review-summary"></div>
+        <div class="gdpr-consent" id="gdpr-consent">
+          <label class="gdpr-consent-label">
+            <input type="checkbox" id="gdpr-checkbox" name="gdpr-consent">
+            <span>
+              Συμφωνώ με την επεξεργασία των προσωπικών μου δεδομένων σύμφωνα με τον Γενικό Κανονισμό Προστασίας Δεδομένων (GDPR) και την
+              <button type="button" class="gdpr-link" id="gdpr-open">Πολιτική Απορρήτου</button>.
+            </span>
+          </label>
+        </div>
         <div class="form-actions">
           <button type="button" class="btn btn-secondary" id="btn-back-edit">Επεξεργασία</button>
-          <button type="button" class="btn btn-primary btn-lg" id="btn-submit">Υποβολή Απαντήσεων</button>
+          <button type="button" class="btn btn-primary btn-lg" id="btn-submit" disabled>Υποβολή Απαντήσεων</button>
         </div>
       </div>
     </section>
@@ -108,6 +117,48 @@
       </p>
     </div>
   </footer>
+
+  <div class="modal-overlay" id="gdpr-modal" hidden role="dialog" aria-modal="true" aria-labelledby="gdpr-modal-title">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2 id="gdpr-modal-title">Πολιτική Απορρήτου &amp; Προστασία Δεδομένων</h2>
+        <button type="button" class="modal-close" id="gdpr-close" aria-label="Κλείσιμο">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p><strong>Υπεύθυνος Επεξεργασίας</strong><br>
+        Δρ. Παπαθεοδοσίου — Ψυχίατρος - Υπνίατρος<br>
+        Υψηλάντου 31, Αθήνα 10675<br>
+        Τηλ.: 213 04 86 332 · <a href="mailto:info@drpapatheodosiou.com">info@drpapatheodosiou.com</a></p>
+
+        <h3>1. Σκοπός επεξεργασίας</h3>
+        <p>Τα δεδομένα που συλλέγονται μέσω των ερωτηματολογίων χρησιμοποιούνται αποκλειστικά για την παροχή ιατρικής και ψυχιατρικής φροντίδας, την αξιολόγηση της κατάστασής σας πριν ή κατά τη διάρκεια της επίσκεψής σας, καθώς και για τη διατήρηση του ιατρικού σας αρχείου.</p>
+
+        <h3>2. Κατηγορίες δεδομένων</h3>
+        <p>Συλλέγουμε: κωδικό ασθενούς, ημερομηνία επίσκεψης και τις απαντήσεις σας στα ερωτηματολόγια. Οι απαντήσεις αποτελούν <strong>ειδική κατηγορία δεδομένων</strong> (δεδομένα υγείας) σύμφωνα με τον GDPR.</p>
+
+        <h3>3. Νομική βάση</h3>
+        <p>Η επεξεργασία βασίζεται στη <strong>συγκατάθεσή σας</strong> (άρθρο 9 παρ. 2α GDPR) καθώς και στην εκτέλεση ιατρικής πράξης και τη συμμόρφωση με νομικές υποχρεώσεις (άρθρο 6 παρ. 1β και 1γ GDPR).</p>
+
+        <h3>4. Αποθήκευση &amp; ασφάλεια</h3>
+        <p>Τα δεδομένα αποθηκεύονται με ασφαλή τρόπο σε ελεγχόμενο περιβάλλον και έχουν πρόσβαση σε αυτά μόνο εξουσιοδοτημένο ιατρικό προσωπικό. Δεν διαβιβάζονται σε τρίτους για εμπορικούς σκοπούς.</p>
+
+        <h3>5. Διάρκεια διατήρησης</h3>
+        <p>Τα δεδομένα διατηρούνται για όσο διάστημα απαιτείται για τους σκοπούς της ιατρικής φροντίδας και σύμφωνα με την ισχύουσα νομοθεσία περί ιατρικών αρχείων.</p>
+
+        <h3>6. Τα δικαιώματά σας</h3>
+        <p>Έχετε δικαίωμα πρόσβασης, διόρθωσης, διαγραφής (υπό προϋποθέσεις), περιορισμού επεξεργασίας, φορητότητας και εναντίωσης. Μπορείτε να ανακαλέσετε τη συγκατάθεσή σας ανά πάσα στιγμή, χωρίς να επηρεάζεται η νομιμότητα της επεξεργασίας πριν την ανάκληση.</p>
+
+        <h3>7. Καταγγελία</h3>
+        <p>Έχετε δικαίωμα να υποβάλετε καταγγελία στην Αρχή Προστασίας Δεδομένων Προσωπικού Χαρακτήρα (<a href="https://www.dpa.gr" target="_blank" rel="noopener">www.dpa.gr</a>).</p>
+
+        <h3>8. Επικοινωνία</h3>
+        <p>Για οποιοδήποτε ερώτημα σχετικά με την προστασία των δεδομένων σας, επικοινωνήστε μαζί μας στο <a href="mailto:info@drpapatheodosiou.com">info@drpapatheodosiou.com</a> ή στο 213 04 86 332.</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary" id="gdpr-close-btn">Κλείσιμο</button>
+      </div>
+    </div>
+  </div>
 
   <div class="toast" id="toast" role="alert" aria-live="polite"></div>
   <div class="loading-overlay" id="loading-overlay" hidden>
