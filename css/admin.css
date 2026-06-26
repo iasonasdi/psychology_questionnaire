@@ -32,6 +32,49 @@
   padding: 0.85rem 1.5rem;
 }
 
+.btn-google {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.65rem;
+  width: 100%;
+  background: #fff;
+  color: #3c4043;
+  border: 1px solid #dadce0;
+  font-weight: 500;
+}
+
+.btn-google:not(:disabled):hover {
+  background: #f8f9fa;
+  border-color: #c6c9cc;
+}
+
+.btn-google:disabled {
+  opacity: 0.7;
+  cursor: wait;
+}
+
+.google-icon {
+  flex-shrink: 0;
+}
+
+.login-divider {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin: 1.25rem 0;
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+}
+
+.login-divider::before,
+.login-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--color-border, #e0e0e0);
+}
+
 .login-error {
   color: var(--color-error);
   font-size: 0.9rem;
@@ -51,7 +94,9 @@
 }
 
 #login-submit:disabled,
-#admin-password:disabled {
+#btn-google-login:disabled,
+#admin-password:disabled,
+#admin-email:disabled {
   cursor: wait;
 }
 

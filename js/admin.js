@@ -38,39 +38,73 @@ const Admin = {
     });
   },
 
+  _loginElements() {
+    return {
+      errorEl: document.getElementById('login-error'),
+      loadingEl: document.getElementById('login-loading'),
+      emailInput: document.getElementById('admin-email'),
+      passwordInput: document.getElementById('admin-password'),
+      submitBtn: document.getElementById('login-submit'),
+      googleBtn: document.getElementById('btn-google-login'),
+      form: document.getElementById('login-form'),
+    };
+  },
+
+  _setLoginBusy(busy) {
+    const { loadingEl, emailInput, passwordInput, submitBtn, googleBtn, form } = this._loginElements();
+    loadingEl.hidden = !busy;
+    form.setAttribute('aria-busy', busy ? 'true' : 'false');
+    emailInput.disabled = busy;
+    passwordInput.disabled = busy;
+    submitBtn.disabled = busy;
+    googleBtn.disabled = busy;
+    submitBtn.textContent = busy ? 'Έλεγχος...' : 'Είσοδος';
+  },
+
+  async _completeLogin() {
+    await FirebaseApp.requireAdmin();
+    await this.startDashboard();
+  },
+
   async handleLogin() {
     const email = document.getElementById('admin-email').value.trim();
     const password = document.getElementById('admin-password').value;
-    const errorEl = document.getElementById('login-error');
-    const loadingEl = document.getElementById('login-loading');
-    const emailInput = document.getElementById('admin-email');
-    const passwordInput = document.getElementById('admin-password');
-    const submitBtn = document.getElementById('login-submit');
-    const form = document.getElementById('login-form');
+    const { errorEl } = this._loginElements();
 
     errorEl.hidden = true;
-    loadingEl.hidden = false;
-    form.setAttribute('aria-busy', 'true');
-    emailInput.disabled = true;
-    passwordInput.disabled = true;
-    submitBtn.disabled = true;
-    submitBtn.textContent = 'Έλεγχος...';
+    this._setLoginBusy(true);
 
     try {
       await FirebaseApp.auth.signInWithEmailAndPassword(email, password);
-      await FirebaseApp.requireAdmin();
-      await this.startDashboard();
+      await this._completeLogin();
     } catch (err) {
       await FirebaseApp.auth.signOut().catch(() => {});
       errorEl.textContent = this._loginErrorMessage(err);
       errorEl.hidden = false;
     } finally {
-      loadingEl.hidden = true;
-      form.removeAttribute('aria-busy');
-      emailInput.disabled = false;
-      passwordInput.disabled = false;
-      submitBtn.disabled = false;
-      submitBtn.textContent = 'Είσοδος';
+      this._setLoginBusy(false);
+    }
+  },
+
+  async handleGoogleLogin() {
+    const { errorEl } = this._loginElements();
+
+    errorEl.hidden = true;
+    this._setLoginBusy(true);
+
+    try {
+      const provider = new firebase.auth.GoogleAuthProvider();
+      await FirebaseApp.auth.signInWithPopup(provider);
+      await this._completeLogin();
+    } catch (err) {
+      if (err && err.code === 'auth/popup-closed-by-user') {
+        return;
+      }
+      await FirebaseApp.auth.signOut().catch(() => {});
+      errorEl.textContent = this._loginErrorMessage(err);
+      errorEl.hidden = false;
+    } finally {
+      this._setLoginBusy(false);
     }
   },
 
@@ -81,6 +115,12 @@ const Admin = {
     }
     if (code === 'auth/too-many-requests') {
       return 'Πολλές αποτυχημένες προσπάθειες. Δοκιμάστε αργότερα.';
+    }
+    if (code === 'auth/popup-blocked') {
+      return 'Το αναδυόμενο παράθυρο αποκλείστηκε. Επιτρέψτε popups για αυτόν τον ιστότοπο.';
+    }
+    if (code === 'auth/account-exists-with-different-credential') {
+      return 'Υπάρχει ήδη λογαριασμός με αυτό το email. Χρησιμοποιήστε email/κωδικό.';
     }
     if (err.message && err.message.includes('admin')) {
       return 'Ο λογαριασμός δεν έχει δικαιώματα admin.';
@@ -126,6 +166,7 @@ const Admin = {
       e.preventDefault();
       this.handleLogin();
     });
+    document.getElementById('btn-google-login').addEventListener('click', () => this.handleGoogleLogin());
     document.getElementById('btn-logout').addEventListener('click', () => this.handleLogout());
     document.getElementById('btn-generate').addEventListener('click', () => this.generateQuestionnaire());
     document.getElementById('btn-clear-filters').addEventListener('click', () => this.clearFilters());

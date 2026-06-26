@@ -193,6 +193,10 @@ body {
   transition: background var(--transition), transform var(--transition), opacity var(--transition);
 }
 
+.btn[hidden] {
+  display: none;
+}
+
 .btn:disabled {
   opacity: 0.45;
   cursor: not-allowed;
