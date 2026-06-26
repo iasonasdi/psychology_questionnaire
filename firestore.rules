@@ -1,0 +1,75 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isAdmin() {
+      return request.auth != null
+        && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+
+    function isValidCode(code) {
+      return code.matches('^PQ-[A-F0-9]{8}$');
+    }
+
+    function isValidCreateIssued(code) {
+      return isValidCode(code)
+        && request.resource.id == code
+        && request.resource.data.code == code
+        && request.resource.data.status == 'pending'
+        && request.resource.data.date is string
+        && request.resource.data.date.matches('^\\d{4}-\\d{2}-\\d{2}$')
+        && request.resource.data.issuedAt is string
+        && request.resource.data.keys().hasAll(['code', 'date', 'issuedAt', 'status']);
+    }
+
+    function canPatientCompleteIssued(code) {
+      return isValidCode(code)
+        && resource.data.status == 'pending'
+        && request.resource.data.status == 'submitted'
+        && request.resource.data.submittedAt is string
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'submittedAt']);
+    }
+
+    function isValidSubmission(code) {
+      return isValidCode(code)
+        && exists(/databases/$(database)/documents/issued/$(code))
+        && get(/databases/$(database)/documents/issued/$(code)).data.status == 'pending'
+        && !exists(/databases/$(database)/documents/submissions/$(code))
+        && request.resource.id == code
+        && request.resource.data.code == code
+        && request.resource.data.submittedAt is string
+        && request.resource.data.keys().hasAll(['code', 'submittedAt', 'patient', 'questionnaires'])
+        && request.resource.data.patient.code == code
+        && request.resource.data.questionnaires is list
+        && request.resource.data.questionnaires.size() >= 1
+        && request.resource.data.questionnaires.size() <= 10;
+    }
+
+    // Admin accounts
+    match /admins/{uid} {
+      allow read: if request.auth != null && request.auth.uid == uid;
+      allow write: if false;
+    }
+
+    // Issued questionnaire links.
+    match /issued/{code} {
+      allow get: if isValidCode(code);
+      allow list: if isAdmin();
+      allow create: if isAdmin() && isValidCreateIssued(code);
+      allow update: if isAdmin() || canPatientCompleteIssued(code);
+      allow delete: if isAdmin();
+    }
+
+    // Patient submissions.
+    match /submissions/{code} {
+      allow get, list: if isAdmin();
+      allow create: if isValidSubmission(code);
+      allow update, delete: if false;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

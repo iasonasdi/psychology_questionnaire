@@ -149,11 +149,91 @@ const Scoring = {
   },
 
   getAnswerLabel(def, questionKey, value) {
+    if (questionKey.endsWith('.distress') && def.distressScale) {
+      const opt = def.distressScale.options.find((o) => String(o.value) === String(value));
+      if (opt) return opt.label;
+    }
+    const options = this.getOptionsForKey(def, questionKey);
+    if (options) {
+      const opt = options.find((o) => String(o.value) === String(value));
+      if (opt) return opt.label;
+    }
     if (value === 'yes') return 'ΝΑΙ';
     if (value === 'no') return 'ΟΧΙ';
     if (value === 'true') return 'Σωστό';
     if (value === 'false') return 'Λάθος';
     return String(value);
+  },
+
+  getOptionsForKey(def, key) {
+    if (def.type === 'hads' && def.questions) {
+      const q = def.questions.find((item) => item.id === key);
+      return q ? q.options : null;
+    }
+
+    if (def.scale && def.questions?.some((q) => q.id === key)) {
+      return def.scale.options;
+    }
+
+    if (!def.sections) return null;
+
+    for (const section of def.sections) {
+      if (!section.questions) continue;
+
+      for (const q of section.questions) {
+        const fullKey = `${section.id}.${q.id}`;
+        if (fullKey !== key) continue;
+
+        if (section.type === 'yesno') {
+          return section.scale?.options || null;
+        }
+        if (section.type === 'likert') {
+          return q.scale?.options || null;
+        }
+        if (section.type === 'numeric_scale') {
+          const options = [];
+          for (let v = section.min; v <= section.max; v++) {
+            options.push({ value: v, label: String(v) });
+          }
+          return options;
+        }
+        if (section.type === 'standalone' && q.scale) {
+          return q.scale.options;
+        }
+      }
+    }
+
+    return null;
+  },
+
+  isYesNoOptions(options) {
+    if (!options || options.length > 2) return false;
+    const values = options.map((o) => String(o.value));
+    return values.every((v) => v === 'yes' || v === 'no');
+  },
+
+  _buildAnswerRow(def, key, questionText, rawValue) {
+    if (rawValue === undefined || rawValue === '') return null;
+
+    const options = this.getOptionsForKey(def, key);
+    if (options && options.length) {
+      const opt = options.find((o) => String(o.value) === String(rawValue));
+      if (opt) {
+        return {
+          key,
+          question: questionText,
+          answer: opt.label,
+          value: this.isYesNoOptions(options) ? '-' : opt.value,
+        };
+      }
+    }
+
+    return {
+      key,
+      question: questionText,
+      answer: this.getAnswerLabel(def, key, rawValue),
+      value: rawValue,
+    };
   },
 
   getQuestionText(def, answerKey) {
@@ -192,13 +272,19 @@ const Scoring = {
   },
 
   formatAnswersForDisplay(def, answers) {
-    const rows = [];
-    const skipDistress = new Set();
+    if (def.type === 'true_false_distress') {
+      return this._formatTrueFalseDistress(def, answers);
+    }
+    if (def.type === 'likert' || def.type === 'yesno' || def.type === 'hads') {
+      return this._formatLikert(def, answers);
+    }
+    if (def.type === 'mixed') {
+      return this._formatMixed(def, answers);
+    }
 
+    const rows = [];
     Object.entries(answers).forEach(([key, value]) => {
       if (value === undefined || value === '') return;
-      if (key.endsWith('.distress') && answers[key.replace('.distress', '.answer')] !== 'true') return;
-
       rows.push({
         key,
         question: this.getQuestionText(def, key),
@@ -206,7 +292,64 @@ const Scoring = {
         value,
       });
     });
+    return rows;
+  },
 
+  _formatTrueFalseDistress(def, answers) {
+    const rows = [];
+    (def.questions || []).forEach((q) => {
+      const answerKey = `${q.id}.answer`;
+      const distressKey = `${q.id}.distress`;
+      const answerVal = answers[answerKey];
+      if (answerVal === undefined || answerVal === '') return;
+
+      if (answerVal === 'false') {
+        rows.push({
+          key: answerKey,
+          question: q.text,
+          answer: 'Λάθος',
+          value: '-',
+        });
+        return;
+      }
+
+      let answerLabel = 'Σωστό';
+      let storedValue = '-';
+      const distressVal = answers[distressKey];
+      if (distressVal !== undefined && distressVal !== '') {
+        const distressLabel = this.getAnswerLabel(def, distressKey, distressVal);
+        answerLabel = `${answerLabel} — ${distressLabel}`;
+        storedValue = distressVal;
+      }
+
+      rows.push({
+        key: answerKey,
+        question: q.text,
+        answer: answerLabel,
+        value: storedValue,
+      });
+    });
+    return rows;
+  },
+
+  _formatLikert(def, answers) {
+    const rows = [];
+    (def.questions || []).forEach((q) => {
+      const row = this._buildAnswerRow(def, q.id, q.text, answers[q.id]);
+      if (row) rows.push(row);
+    });
+    return rows;
+  },
+
+  _formatMixed(def, answers) {
+    const rows = [];
+    (def.sections || []).forEach((section) => {
+      (section.questions || []).forEach((q) => {
+        const key = `${section.id}.${q.id}`;
+        const row = this._buildAnswerRow(def, key, q.text, answers[key]);
+        if (row) rows.push(row);
+      });
+    });
     return rows;
   },
 };

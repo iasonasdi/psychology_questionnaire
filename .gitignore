@@ -14,3 +14,11 @@ Thumbs.db
 
 # Logs
 *.log
+
+# Firebase local / emulator
+.firebase/
+.data/
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+.firebaserc

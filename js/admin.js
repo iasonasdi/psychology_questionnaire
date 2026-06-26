@@ -1,92 +1,97 @@
 /**
- * Admin panel — view and search patient submissions.
+ * Admin panel — Firebase Auth + Firestore.
  */
 const Admin = {
   state: {
     patients: [],
     questionnaireDefs: [],
     currentPatient: null,
-  },
-
-  apiUrl(action, params = {}) {
-    const url = new URL(CONFIG.GOOGLE_SCRIPT_URL);
-    url.searchParams.set('action', action);
-    const key = sessionStorage.getItem('admin_key') || '';
-    if (key) {
-      url.searchParams.set('key', key);
-    }
-    Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
-    return url.toString();
-  },
-
-  requiresLogin() {
-    return true;
-  },
-
-  isLoggedIn() {
-    return !this.requiresLogin() || Boolean(sessionStorage.getItem('admin_key'));
-  },
-
-  async fetchApi(action, params = {}) {
-    const res = await fetch(this.apiUrl(action, params));
-    const data = await res.json();
-    if (data.error && (data.error.includes('Unauthorized') || data.error.includes('admin access'))) {
-      sessionStorage.removeItem('admin_key');
-      this.showLogin();
-      throw new Error('Απαιτείται σύνδεση admin.');
-    }
-    if (!data.success && data.error) {
-      throw new Error(data.error);
-    }
-    return data;
+    authReady: false,
   },
 
   async init() {
-    if (!CONFIG.GOOGLE_SCRIPT_URL) {
-      this.showToast('Δεν έχει ρυθμιστεί το GOOGLE_SCRIPT_URL. Ελέγξτε το deploy στο GitHub Actions.', true);
+    try {
+      FirebaseApp.init();
+    } catch (err) {
+      this.showToast(err.message, true);
       this.showLogin();
       return;
     }
 
     this.bindEvents();
-    this.setDefaultGenerateDate();
+    this.initGenerateDatePicker();
 
-    if (this.isLoggedIn()) {
-      await this.startDashboard();
-    } else {
-      this.showLogin();
-    }
+    FirebaseApp.auth.onAuthStateChanged(async (user) => {
+      this.state.authReady = true;
+      if (!user) {
+        this.showLogin();
+        return;
+      }
+
+      try {
+        await FirebaseApp.requireAdmin();
+        await this.startDashboard();
+      } catch {
+        await FirebaseApp.auth.signOut();
+        this.showLogin();
+      }
+    });
   },
 
   async handleLogin() {
-    const form = document.getElementById('login-form');
+    const email = document.getElementById('admin-email').value.trim();
     const password = document.getElementById('admin-password').value;
     const errorEl = document.getElementById('login-error');
     const loadingEl = document.getElementById('login-loading');
+    const emailInput = document.getElementById('admin-email');
     const passwordInput = document.getElementById('admin-password');
     const submitBtn = document.getElementById('login-submit');
+    const form = document.getElementById('login-form');
+
     errorEl.hidden = true;
     loadingEl.hidden = false;
     form.setAttribute('aria-busy', 'true');
+    emailInput.disabled = true;
     passwordInput.disabled = true;
     submitBtn.disabled = true;
     submitBtn.textContent = 'Έλεγχος...';
 
-    sessionStorage.setItem('admin_key', password);
-
     try {
-      await this.fetchApi('stats');
+      await FirebaseApp.auth.signInWithEmailAndPassword(email, password);
+      await FirebaseApp.requireAdmin();
       await this.startDashboard();
-    } catch {
-      sessionStorage.removeItem('admin_key');
+    } catch (err) {
+      await FirebaseApp.auth.signOut().catch(() => {});
+      errorEl.textContent = this._loginErrorMessage(err);
       errorEl.hidden = false;
     } finally {
       loadingEl.hidden = true;
       form.removeAttribute('aria-busy');
+      emailInput.disabled = false;
       passwordInput.disabled = false;
       submitBtn.disabled = false;
       submitBtn.textContent = 'Είσοδος';
     }
+  },
+
+  _loginErrorMessage(err) {
+    const code = err && err.code;
+    if (code === 'auth/invalid-credential' || code === 'auth/wrong-password' || code === 'auth/user-not-found') {
+      return 'Λάθος email ή κωδικός πρόσβασης.';
+    }
+    if (code === 'auth/too-many-requests') {
+      return 'Πολλές αποτυχημένες προσπάθειες. Δοκιμάστε αργότερα.';
+    }
+    if (err.message && err.message.includes('admin')) {
+      return 'Ο λογαριασμός δεν έχει δικαιώματα admin.';
+    }
+    return 'Η σύνδεση απέτυχε. Δοκιμάστε ξανά.';
+  },
+
+  async handleLogout() {
+    await FirebaseApp.auth.signOut();
+    this.showLogin();
+    this.showToast('Αποσυνδεθήκατε.');
   },
 
   async startDashboard() {
@@ -99,6 +104,7 @@ const Admin = {
     document.getElementById('admin-login').classList.add('active');
     document.getElementById('admin-dashboard').classList.remove('active');
     document.getElementById('admin-detail').classList.remove('active');
+    document.getElementById('btn-logout').hidden = true;
   },
 
   async loadQuestionnaireDefs() {
@@ -120,17 +126,92 @@ const Admin = {
       e.preventDefault();
       this.handleLogin();
     });
+    document.getElementById('btn-logout').addEventListener('click', () => this.handleLogout());
     document.getElementById('btn-generate').addEventListener('click', () => this.generateQuestionnaire());
-    document.getElementById('btn-search').addEventListener('click', () => this.search());
-    document.getElementById('btn-clear').addEventListener('click', () => this.loadPatients());
+    document.getElementById('btn-clear-filters').addEventListener('click', () => this.clearFilters());
+    document.getElementById('btn-filter-toggle').addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.toggleFilterDropdown();
+    });
+    document.addEventListener('click', (e) => this.handleFilterOutsideClick(e));
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') this.closeFilterDropdown();
+    });
     document.getElementById('btn-refresh').addEventListener('click', () => this.refreshDashboard());
     document.getElementById('btn-back-list').addEventListener('click', () => this.showDashboard());
-    document.getElementById('search-input').addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') this.search();
+    document.getElementById('search-input').addEventListener('input', () => this.applyFilters());
+    document.getElementById('filter-status').addEventListener('change', () => {
+      this.applyFilters();
+      this.updateFilterIndicator();
+    });
+    document.getElementById('filter-sort').addEventListener('change', () => {
+      this.applyFilters();
+      this.updateFilterIndicator();
+    });
+  },
+
+  toggleFilterDropdown() {
+    const dropdown = document.getElementById('filter-dropdown');
+    const toggle = document.getElementById('btn-filter-toggle');
+    const isOpen = !dropdown.hidden;
+    dropdown.hidden = isOpen;
+    toggle.setAttribute('aria-expanded', String(!isOpen));
+  },
+
+  closeFilterDropdown() {
+    const dropdown = document.getElementById('filter-dropdown');
+    const toggle = document.getElementById('btn-filter-toggle');
+    if (dropdown.hidden) return;
+    dropdown.hidden = true;
+    toggle.setAttribute('aria-expanded', 'false');
+  },
+
+  handleFilterOutsideClick(e) {
+    const wrap = document.querySelector('.filter-dropdown-wrap');
+    if (wrap && !wrap.contains(e.target)) {
+      this.closeFilterDropdown();
+    }
+  },
+
+  updateFilterIndicator() {
+    const status = document.getElementById('filter-status').value;
+    const sort = document.getElementById('filter-sort').value;
+    const hasActive = status !== 'all' || sort !== 'issued-desc';
+    const dot = document.getElementById('filter-active-dot');
+    const toggle = document.getElementById('btn-filter-toggle');
+    dot.hidden = !hasActive;
+    toggle.classList.toggle('has-active-filters', hasActive);
+  },
+
+  initGenerateDatePicker() {
+    const input = document.getElementById('generate-date');
+    if (!input) return;
+
+    if (typeof flatpickr === 'undefined') {
+      input.type = 'date';
+      if (!input.value) {
+        input.value = new Date().toISOString().split('T')[0];
+      }
+      return;
+    }
+
+    this.generateDatePicker = flatpickr(input, {
+      locale: flatpickr.l10ns.gr,
+      dateFormat: 'Y-m-d',
+      altInput: true,
+      altFormat: 'd/m/Y',
+      altInputClass: 'admin-date-input',
+      defaultDate: new Date(),
+      allowInput: false,
+      disableMobile: true,
     });
   },
 
   setDefaultGenerateDate() {
+    if (this.generateDatePicker) {
+      this.generateDatePicker.setDate(new Date(), true);
+      return;
+    }
     const dateInput = document.getElementById('generate-date');
     if (dateInput && !dateInput.value) {
       dateInput.value = new Date().toISOString().split('T')[0];
@@ -142,38 +223,105 @@ const Admin = {
   },
 
   async loadStats() {
-    const data = await this.fetchApi('stats');
-    document.getElementById('stat-total').textContent = data.totalPatients || 0;
-    document.getElementById('stat-pending').textContent = data.pending || 0;
-    document.getElementById('stat-submitted').textContent = data.submitted || 0;
+    await FirebaseApp.requireAdmin();
+    const snap = await FirebaseApp.db.collection('issued').get();
+    const patients = snap.docs.map((doc) => doc.data());
+    document.getElementById('stat-total').textContent = patients.length;
+    document.getElementById('stat-pending').textContent = patients.filter((p) => p.status === 'pending').length;
+    document.getElementById('stat-submitted').textContent = patients.filter((p) => p.status === 'submitted').length;
   },
 
   async loadPatients() {
     const list = document.getElementById('patient-list');
     list.innerHTML = '<p class="loading-text">Φόρτωση…</p>';
-    document.getElementById('search-input').value = '';
 
     try {
-      const data = await this.fetchApi('list');
-      this.state.patients = data.patients || [];
-      this.renderPatientList(this.state.patients);
+      await FirebaseApp.requireAdmin();
+      const snap = await FirebaseApp.db.collection('issued').get();
+      this.state.patients = snap.docs.map((doc) => ({ ...doc.data(), code: doc.id }));
+      this.applyFilters();
     } catch (err) {
-      list.innerHTML = `<p class="error-text">${err.message}</p>`;
+      list.innerHTML = `<p class="error-text">${this.escape(err.message)}</p>`;
       this.showToast(err.message, true);
     }
   },
 
-  async search() {
-    const q = document.getElementById('search-input').value.trim();
-    const list = document.getElementById('patient-list');
-    list.innerHTML = '<p class="loading-text">Αναζήτηση…</p>';
+  clearFilters() {
+    document.getElementById('search-input').value = '';
+    document.getElementById('filter-status').value = 'all';
+    document.getElementById('filter-sort').value = 'issued-desc';
+    this.updateFilterIndicator();
+    this.applyFilters();
+    this.closeFilterDropdown();
+  },
 
-    try {
-      const data = await this.fetchApi('search', { q });
-      this.renderPatientList(data.patients || []);
-    } catch (err) {
-      list.innerHTML = `<p class="error-text">${err.message}</p>`;
+  applyFilters() {
+    const q = document.getElementById('search-input').value.trim().toLowerCase();
+    const status = document.getElementById('filter-status').value;
+    const sort = document.getElementById('filter-sort').value;
+    this.updateFilterIndicator();
+
+    let filtered = [...this.state.patients];
+
+    if (status !== 'all') {
+      filtered = filtered.filter((p) => p.status === status);
     }
+
+    if (q) {
+      const words = q.split(/\s+/).filter(Boolean);
+      filtered = filtered.filter((p) => {
+        const haystack = [
+          p.code,
+          p.date,
+          p.status,
+          this.renderStatusLabel(p.status),
+          p.issuedAt,
+          p.submittedAt,
+        ]
+          .join(' ')
+          .toLowerCase();
+        return words.every((w) => haystack.includes(w));
+      });
+    }
+
+    filtered.sort((a, b) => this._comparePatientsForSort(a, b, sort));
+
+    this.renderPatientList(filtered);
+  },
+
+  _parseSortTimestamp(value) {
+    if (!value) return null;
+    const text = String(value).trim();
+    if (!text) return null;
+
+    const iso = Date.parse(text);
+    if (!Number.isNaN(iso)) return iso;
+
+    const dateOnly = text.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (dateOnly) {
+      return new Date(Number(dateOnly[1]), Number(dateOnly[2]) - 1, Number(dateOnly[3])).getTime();
+    }
+
+    return null;
+  },
+
+  _comparePatientsForSort(a, b, sort) {
+    const ascending = sort.endsWith('-asc');
+    const field = sort.startsWith('submitted') ? 'submittedAt' : 'issuedAt';
+    const aTime = this._parseSortTimestamp(a[field]);
+    const bTime = this._parseSortTimestamp(b[field]);
+
+    if (aTime === null && bTime === null) {
+      return (a.code || '').localeCompare(b.code || '', 'el');
+    }
+    if (aTime === null) return 1;
+    if (bTime === null) return -1;
+
+    if (aTime !== bTime) {
+      return ascending ? aTime - bTime : bTime - aTime;
+    }
+
+    return (a.code || '').localeCompare(b.code || '', 'el');
   },
 
   renderPatientList(patients) {
@@ -188,9 +336,9 @@ const Admin = {
       .map(
         (p) => `
       <div class="patient-row-card">
-        <button type="button" class="patient-row" data-sheet="${this.escape(p.sheet)}">
+        <button type="button" class="patient-row status-${p.status === 'submitted' ? 'submitted' : 'pending'}" data-code="${this.escape(p.code)}">
           <div class="patient-row-main">
-            <span class="patient-name">${this.escape(p.code || p.name || p.sheet)}</span>
+            <span class="patient-name">${this.escape(p.code)}</span>
             <span class="patient-date">${this.formatDate(p.date)}</span>
           </div>
           <div class="patient-row-meta">
@@ -200,7 +348,8 @@ const Admin = {
           </div>
         </button>
         <div class="patient-row-actions">
-          ${p.code ? `<button type="button" class="btn btn-secondary btn-sm btn-inline-copy" data-link="${this.escape(this.buildPatientLink(p.code, p.date))}">Copy Link</button>` : ''}
+          ${this.renderCopyIconButton('btn-inline-copy', `data-link="${this.escape(this.buildPatientLink(p.code, p.date))}"`)}
+          ${this.renderDownloadIconButton('btn-inline-download', { disabled: p.status !== 'submitted', attrs: `data-code="${this.escape(p.code)}"` })}
         </div>
       </div>
     `
@@ -208,7 +357,7 @@ const Admin = {
       .join('');
 
     list.querySelectorAll('.patient-row').forEach((row) => {
-      row.addEventListener('click', () => this.openPatient(row.dataset.sheet));
+      row.addEventListener('click', () => this.openPatient(row.dataset.code));
     });
     list.querySelectorAll('.btn-inline-copy').forEach((btn) => {
       btn.addEventListener('click', async (e) => {
@@ -216,14 +365,68 @@ const Admin = {
         await this.copyToClipboard(btn.dataset.link, 'Το link αντιγράφηκε.');
       });
     });
+    list.querySelectorAll('.btn-inline-download').forEach((btn) => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        if (btn.disabled) return;
+        await this.downloadPatientExcel(btn.dataset.code);
+      });
+    });
   },
 
-  async openPatient(sheetName) {
+  async fetchPatientData(code) {
+    await FirebaseApp.requireAdmin();
+    const issuedDoc = await FirebaseApp.db.collection('issued').doc(code).get();
+    if (!issuedDoc.exists) {
+      throw new Error('Το ερωτηματολόγιο δεν βρέθηκε.');
+    }
+
+    const issued = issuedDoc.data();
+    const submissionDoc = await FirebaseApp.db.collection('submissions').doc(code).get();
+    const submission = submissionDoc.exists ? submissionDoc.data() : null;
+
+    return {
+      code,
+      patient: {
+        ...issued,
+        submittedAt: submission ? submission.submittedAt : issued.submittedAt || '',
+      },
+      questionnaires: submission ? submission.questionnaires || [] : [],
+    };
+  },
+
+  async openPatient(code) {
     try {
-      const data = await this.fetchApi('get', { sheet: sheetName });
+      const data = await this.fetchPatientData(code);
       this.state.currentPatient = data;
       this.renderPatientDetail(data);
       this.showDetail();
+    } catch (err) {
+      this.showToast(err.message, true);
+    }
+  },
+
+  async downloadPatientExcel(code) {
+    try {
+      if (!this.state.questionnaireDefs.length) {
+        await this.loadQuestionnaireDefs();
+      }
+
+      let data =
+        this.state.currentPatient && this.state.currentPatient.code === code
+          ? this.state.currentPatient
+          : await this.fetchPatientData(code);
+
+      if (data.patient.status !== 'submitted') {
+        throw new Error('Η λήψη Excel είναι διαθέσιμη μόνο μετά την υποβολή.');
+      }
+
+      if (!data.questionnaires || !data.questionnaires.length) {
+        throw new Error('Δεν υπάρχουν υποβληθέντα δεδομένα για export.');
+      }
+
+      await ExcelExport.download(data, this.state.questionnaireDefs);
+      this.showToast('Το Excel κατέβηκε.');
     } catch (err) {
       this.showToast(err.message, true);
     }
@@ -245,7 +448,7 @@ const Admin = {
     const evaluated = Scoring.evaluateAll(this.state.questionnaireDefs, submissions);
 
     document.getElementById('patient-overview').innerHTML = `
-      <h2>${this.escape(patient.code || data.sheet)}</h2>
+      <h2>${this.escape(patient.code || data.code)}</h2>
       <div class="overview-grid">
         <div class="overview-item">
           <span class="overview-label">Κωδικός</span>
@@ -273,13 +476,15 @@ const Admin = {
         </div>
       </div>
       <div class="link-row">
-        <button type="button" class="btn btn-secondary btn-sm" data-copy-link="${this.escape(this.buildPatientLink(patient.code, patient.date))}">Αντιγραφή Link</button>
+        ${this.renderCopyIconButton('', `data-copy-link="${this.escape(this.buildPatientLink(patient.code, patient.date))}"`)}
+        ${this.renderDownloadIconButton('', { disabled: !(patient.status === 'submitted' && questionnaires.length), attrs: `data-download-excel="${this.escape(patient.code)}"` })}
       </div>
     `;
 
-    document.getElementById('summary-grid').innerHTML = evaluated
-      .map(
-        (item) => `
+    document.getElementById('summary-grid').innerHTML = evaluated.length
+      ? evaluated
+          .map(
+            (item) => `
       <div class="summary-card">
         <span class="summary-badge">${this.escape(item.shortTitle)}</span>
         <h3>${this.escape(item.title)}</h3>
@@ -300,21 +505,23 @@ const Admin = {
         }
       </div>
     `
-      )
-      .join('');
+          )
+          .join('')
+      : '<p class="empty-text">Δεν υπάρχουν υποβολές ακόμα.</p>';
 
     const detailsEl = document.getElementById('questionnaire-details');
-    detailsEl.innerHTML = evaluated
-      .map((item) => {
-        const def = this.state.questionnaireDefs.find((d) => d.id === item.id);
-        const rows = def
-          ? Scoring.formatAnswersForDisplay(def, item.answers)
-          : Object.entries(item.answers).map(([key, value]) => ({
-              question: key,
-              answer: Scoring.getAnswerLabel(def, key, value),
-            }));
+    detailsEl.innerHTML = evaluated.length
+      ? evaluated
+          .map((item) => {
+            const def = this.state.questionnaireDefs.find((d) => d.id === item.id);
+            const rows = def
+              ? Scoring.formatAnswersForDisplay(def, item.answers)
+              : Object.entries(item.answers).map(([key, value]) => ({
+                  question: key,
+                  answer: Scoring.getAnswerLabel(def, key, value),
+                }));
 
-        return `
+            return `
         <details class="card q-detail-card" ${item.id === 'q01-adhd' ? 'open' : ''}>
           <summary>
             <span class="summary-badge">${this.escape(item.shortTitle)}</span>
@@ -341,13 +548,22 @@ const Admin = {
             </table>
           </div>
         </details>`;
-      })
-      .join('');
+          })
+          .join('')
+      : '';
 
     const copyBtn = document.querySelector('[data-copy-link]');
     if (copyBtn) {
       copyBtn.addEventListener('click', async () => {
         await this.copyToClipboard(copyBtn.dataset.copyLink, 'Το link αντιγράφηκε.');
+      });
+    }
+
+    const downloadBtn = document.querySelector('[data-download-excel]');
+    if (downloadBtn) {
+      downloadBtn.addEventListener('click', async () => {
+        if (downloadBtn.disabled) return;
+        await this.downloadPatientExcel(downloadBtn.dataset.downloadExcel);
       });
     }
   },
@@ -361,6 +577,7 @@ const Admin = {
     document.getElementById('admin-login').classList.remove('active');
     document.getElementById('admin-dashboard').classList.add('active');
     document.getElementById('admin-detail').classList.remove('active');
+    document.getElementById('btn-logout').hidden = false;
     window.scrollTo({ top: 0, behavior: 'smooth' });
   },
 
@@ -371,14 +588,28 @@ const Admin = {
     resultEl.innerHTML = '<p class="loading-text">Δημιουργία...</p>';
 
     try {
-      const data = await this.fetchApi('generate', { date });
-      const link = this.buildPatientLink(data.code, data.date);
+      await FirebaseApp.requireAdmin();
+      if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+        throw new Error('Μη έγκυρη ημερομηνία.');
+      }
+
+      const code = await QuestionnaireAPI.generateUniqueCode();
+      const issuedAt = new Date().toISOString();
+      await FirebaseApp.db.collection('issued').doc(code).set({
+        code,
+        date,
+        issuedAt,
+        status: 'pending',
+        submittedAt: '',
+      });
+
+      const link = this.buildPatientLink(code, date);
       resultEl.innerHTML = `
         <div class="generated-card">
-          <p><strong>Κωδικός:</strong> ${this.escape(data.code)}</p>
-          <p><strong>Ημερομηνία:</strong> ${this.escape(this.formatDate(data.date))}</p>
+          <p><strong>Κωδικός:</strong> ${this.escape(code)}</p>
+          <p><strong>Ημερομηνία:</strong> ${this.escape(this.formatDate(date))}</p>
           <p><strong>Link:</strong> <a href="${this.escape(link)}" target="_blank" rel="noopener">${this.escape(link)}</a></p>
-          <button type="button" class="btn btn-secondary btn-sm" id="btn-copy-generated">Αντιγραφή Link</button>
+          ${this.renderCopyIconButton('', 'id="btn-copy-generated"')}
         </div>
       `;
       document.getElementById('btn-copy-generated').addEventListener('click', async () => {
@@ -395,6 +626,7 @@ const Admin = {
     document.getElementById('admin-login').classList.remove('active');
     document.getElementById('admin-dashboard').classList.remove('active');
     document.getElementById('admin-detail').classList.add('active');
+    document.getElementById('btn-logout').hidden = false;
     window.scrollTo({ top: 0, behavior: 'smooth' });
   },
 
@@ -423,7 +655,28 @@ const Admin = {
   },
 
   renderStatusLabel(status) {
-    return status === 'submitted' ? 'Submitted' : 'Pending';
+    return status === 'submitted' ? 'Υποβλήθηκε' : 'Εκκρεμεί';
+  },
+
+  iconCopy() {
+    return `<svg class="btn-icon-svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>`;
+  },
+
+  iconDownload() {
+    return `<svg class="btn-icon-svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>`;
+  },
+
+  renderCopyIconButton(className = '', attrs = '') {
+    const label = 'Αντιγραφή συνδέσμου';
+    const classes = ['btn', 'btn-secondary', 'btn-sm', 'btn-icon', 'has-tooltip', className].filter(Boolean).join(' ');
+    return `<button type="button" class="${classes}" ${attrs} title="${label}" aria-label="${label}" data-tooltip="${label}">${this.iconCopy()}</button>`;
+  },
+
+  renderDownloadIconButton(className = '', { disabled = false, attrs = '' } = {}) {
+    const label = disabled ? 'Διαθέσιμο μετά την υποβολή' : 'Κατέβασμα xls αρχείου';
+    const classes = ['btn', 'btn-secondary', 'btn-sm', 'btn-icon', 'has-tooltip', className].filter(Boolean).join(' ');
+    const button = `<button type="button" class="${classes}" ${attrs} title="${label}" aria-label="Κατέβασμα xls αρχείου" data-tooltip="${label}" ${disabled ? 'disabled' : ''}>${this.iconDownload()}</button>`;
+    return disabled ? `<span class="has-tooltip tooltip-wrap" data-tooltip="${label}">${button}</span>` : button;
   },
 
   buildPatientLink(code, date) {

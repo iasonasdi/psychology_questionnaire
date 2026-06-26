@@ -11,6 +11,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/styles.css">
   <link rel="stylesheet" href="css/admin.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
 </head>
 <body>
   <header class="site-header">
@@ -21,6 +22,7 @@
         <p class="subtitle">Δρ. Παπαθεοδοσίου — Διαχείριση Απαντήσεων</p>
       </div>
       <a href="index.html" class="btn btn-secondary admin-back-btn">← Ερωτηματολόγια</a>
+      <button type="button" class="btn btn-secondary btn-sm" id="btn-logout" hidden>Έξοδος</button>
     </div>
   </header>
 
@@ -28,9 +30,13 @@
     <!-- Login -->
     <section id="admin-login" class="admin-screen">
       <div class="card login-card">
-        <h2>Σύνδεση Admin</h2>
-        <p class="welcome-text">Εισάγετε τον κωδικό πρόσβασης για να δείτε τις απαντήσεις.</p>
+        <h2>Σύνδεση Διαχειριστή</h2>
+        <p class="welcome-text">Συνδεθείτε με το email και τον κωδικό admin.</p>
         <form id="login-form" class="patient-form">
+          <div class="form-group">
+            <label for="admin-email">Email</label>
+            <input type="email" id="admin-email" required autocomplete="username">
+          </div>
           <div class="form-group">
             <label for="admin-password">Κωδικός</label>
             <input type="password" id="admin-password" required autocomplete="current-password">
@@ -64,18 +70,54 @@
           <h2>Έκδοση Νέου Ερωτηματολογίου</h2>
           <button type="button" class="btn btn-primary" id="btn-generate">Δημιουργία</button>
         </div>
-        <div class="search-row">
-          <input type="date" id="generate-date">
+        <div class="generate-date-field">
+          <label for="generate-date">Ημερομηνία έκδοσης</label>
+          <input type="text" id="generate-date" placeholder="Επιλέξτε ημερομηνία" autocomplete="off">
         </div>
         <div id="generated-result" class="generated-result" hidden></div>
       </div>
 
       <div class="card admin-search-card">
-        <h2>Αναζήτηση Κωδικού</h2>
-        <div class="search-row">
-          <input type="search" id="search-input" placeholder="Κωδικός, κατάσταση ή ημερομηνία…" autocomplete="off">
-          <button type="button" class="btn btn-primary" id="btn-search">Αναζήτηση</button>
-          <button type="button" class="btn btn-secondary" id="btn-clear">Όλοι</button>
+        <h2>Αναζήτηση &amp; Φίλτρα</h2>
+        <div class="search-toolbar">
+          <input type="search" id="search-input" class="search-input" placeholder="Κωδικός, κατάσταση ή ημερομηνία…" autocomplete="off">
+          <div class="filter-dropdown-wrap">
+            <button
+              type="button"
+              class="btn-filter-toggle"
+              id="btn-filter-toggle"
+              aria-expanded="false"
+              aria-controls="filter-dropdown"
+              aria-label="Φίλτρα"
+              title="Φίλτρα"
+            >
+              <svg class="filter-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+                <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+              </svg>
+              <span class="filter-active-dot" id="filter-active-dot" hidden aria-hidden="true"></span>
+            </button>
+            <div class="filter-dropdown" id="filter-dropdown" hidden>
+              <p class="filter-dropdown-title">Φίλτρα &amp; ταξινόμηση</p>
+              <div class="filter-group">
+                <label for="filter-status">Κατάσταση</label>
+                <select id="filter-status" class="filter-select">
+                  <option value="all">Όλα</option>
+                  <option value="pending">Εκκρεμεί</option>
+                  <option value="submitted">Υποβλήθηκε</option>
+                </select>
+              </div>
+              <div class="filter-group">
+                <label for="filter-sort">Ταξινόμηση</label>
+                <select id="filter-sort" class="filter-select">
+                  <option value="issued-desc">Έκδοση — νεότερα πρώτα</option>
+                  <option value="issued-asc">Έκδοση — παλαιότερα πρώτα</option>
+                  <option value="submitted-desc">Υποβολή — νεότερα πρώτα</option>
+                  <option value="submitted-asc">Υποβολή — παλαιότερα πρώτα</option>
+                </select>
+              </div>
+              <button type="button" class="btn btn-secondary btn-block" id="btn-clear-filters">Καθαρισμός φίλτρων</button>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -110,9 +152,18 @@
 
   <div class="toast" id="toast" role="alert"></div>
 
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/gr.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/11.6.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/11.6.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore-compat.js"></script>
   <script src="js/config.example.js"></script>
   <script src="js/config.js"></script>
+  <script src="js/firebase-init.js"></script>
+  <script src="js/questionnaire-api.js"></script>
   <script src="js/scoring.js"></script>
+  <script src="js/excel-export.js"></script>
   <script src="js/admin.js"></script>
 </body>
 </html>

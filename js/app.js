@@ -176,8 +176,12 @@ const App = {
     submitBtn.textContent = 'Έλεγχος κωδικού...';
 
     try {
-      const result = await SheetsAPI.validateCode(code);
-      this.state.patient = { code: result.code || code, date: date || result.date };
+      const result = await QuestionnaireAPI.validateCode(code);
+      this.state.patient = {
+        code: result.code || code,
+        date: date || result.date,
+        issuedAt: result.issuedAt || '',
+      };
       this.state.currentIndex = 0;
       this._showScreen('questionnaire');
       this._renderCurrentQuestionnaire();
@@ -310,7 +314,7 @@ const App = {
     this.elements.loadingOverlay.hidden = false;
 
     try {
-      await SheetsAPI.submitWithFallback(
+      await QuestionnaireAPI.submitWithFallback(
         this.state.patient,
         this.state.questionnaires,
         this.state.answers
