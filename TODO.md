@@ -2,8 +2,8 @@
 
 1. Max tries for code (patient) enter
 2. max tries for login
-3. Rules double check.
-4. Google login fix
+3. [X] Rules double check.
+4. [~] Google login fix - **Hidden for now**
 5. Make sure it is secure the admin etc
 6. Remove /admin.html make only admin
 7. [X] Make to store also the type of questionnaire to be ok
