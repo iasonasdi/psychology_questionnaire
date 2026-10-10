@@ -36,13 +36,16 @@ const QuestionnaireAPI = {
     return clean;
   },
 
-  buildPayload(patient, questionnaires, allAnswers) {
+  buildPayload(patient, questionnaires, allAnswers, battery) {
     const submittedAt = new Date().toISOString();
     const code = this.normalizeCode(patient.code);
+    const resolved = Battery.resolve(battery);
 
     return {
       code,
       submittedAt,
+      batteryId: resolved.id,
+      batteryName: resolved.name,
       patient: {
         code,
         date: patient.date || '',
@@ -66,6 +69,19 @@ const QuestionnaireAPI = {
 
         return entry;
       }),
+    };
+  },
+
+  buildIssuedRecord({ code, date, issuedAt, battery }) {
+    const resolved = Battery.resolve(battery);
+    return {
+      code,
+      date,
+      issuedAt,
+      status: 'pending',
+      submittedAt: '',
+      batteryId: resolved.id,
+      batteryName: resolved.name,
     };
   },
 
@@ -115,10 +131,10 @@ const QuestionnaireAPI = {
     }
   },
 
-  async submit(patient, questionnaires, allAnswers) {
+  async submit(patient, questionnaires, allAnswers, battery) {
     FirebaseApp.init();
     const payload = this.sanitizeForFirestore(
-      this.buildPayload(patient, questionnaires, allAnswers)
+      this.buildPayload(patient, questionnaires, allAnswers, battery)
     );
     const code = payload.code;
     const db = FirebaseApp.db;
@@ -142,8 +158,8 @@ const QuestionnaireAPI = {
     return { success: true, code };
   },
 
-  async submitWithFallback(patient, questionnaires, allAnswers) {
-    return this.submit(patient, questionnaires, allAnswers);
+  async submitWithFallback(patient, questionnaires, allAnswers, battery) {
+    return this.submit(patient, questionnaires, allAnswers, battery);
   },
 
   async generateUniqueCode() {
@@ -157,3 +173,7 @@ const QuestionnaireAPI = {
     throw new Error('Δεν ήταν δυνατή η δημιουργία μοναδικού κωδικού.');
   },
 };
+
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = { QuestionnaireAPI };
+}

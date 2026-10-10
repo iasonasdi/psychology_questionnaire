@@ -5,8 +5,10 @@ const Admin = {
   state: {
     patients: [],
     questionnaireDefs: [],
+    battery: null,
     currentPatient: null,
     authReady: false,
+    dashboardStarted: false,
   },
 
   async init() {
@@ -21,20 +23,26 @@ const Admin = {
     this.bindEvents();
     this.initGenerateDatePicker();
 
+    let redirectError = null;
+    try {
+      await FirebaseApp.auth.getRedirectResult();
+    } catch (err) {
+      redirectError = err;
+    }
+
     FirebaseApp.auth.onAuthStateChanged(async (user) => {
       this.state.authReady = true;
       if (!user) {
+        this.state.dashboardStarted = false;
         this.showLogin();
+        if (redirectError) {
+          this._showLoginError(redirectError);
+          redirectError = null;
+        }
         return;
       }
 
-      try {
-        await FirebaseApp.requireAdmin();
-        await this.startDashboard();
-      } catch {
-        await FirebaseApp.auth.signOut();
-        this.showLogin();
-      }
+      await this._enterIfAdmin(user);
     });
   },
 
@@ -46,32 +54,66 @@ const Admin = {
       passwordInput: document.getElementById('admin-password'),
       submitBtn: document.getElementById('login-submit'),
       googleBtn: document.getElementById('btn-google-login'),
+      forgotBtn: document.getElementById('btn-forgot-password'),
+      noticeEl: document.getElementById('login-notice'),
       form: document.getElementById('login-form'),
     };
   },
 
   _setLoginBusy(busy) {
-    const { loadingEl, emailInput, passwordInput, submitBtn, googleBtn, form } = this._loginElements();
+    const { loadingEl, emailInput, passwordInput, submitBtn, googleBtn, forgotBtn, form } = this._loginElements();
     loadingEl.hidden = !busy;
     form.setAttribute('aria-busy', busy ? 'true' : 'false');
     emailInput.disabled = busy;
     passwordInput.disabled = busy;
     submitBtn.disabled = busy;
-    googleBtn.disabled = busy;
+    if (googleBtn) googleBtn.disabled = busy;
+    if (forgotBtn) forgotBtn.disabled = busy;
     submitBtn.textContent = busy ? 'Έλεγχος...' : 'Είσοδος';
   },
 
+  async _enterIfAdmin(user) {
+    if (!user || this.state.dashboardStarted) return;
+
+    try {
+      await FirebaseApp.requireAdmin();
+      this.state.dashboardStarted = true;
+      await this.startDashboard();
+    } catch (err) {
+      this.state.dashboardStarted = false;
+      await FirebaseApp.auth.signOut().catch(() => {});
+      this.showLogin();
+      this._showLoginError(err);
+    }
+  },
+
+  _showLoginError(err) {
+    const { errorEl, noticeEl } = this._loginElements();
+    if (noticeEl) noticeEl.hidden = true;
+    errorEl.textContent = this._loginErrorMessage(err);
+    errorEl.hidden = false;
+    this._setLoginBusy(false);
+  },
+
+  _showLoginNotice(message) {
+    const { errorEl, noticeEl } = this._loginElements();
+    errorEl.hidden = true;
+    noticeEl.textContent = message;
+    noticeEl.hidden = false;
+  },
+
   async _completeLogin() {
-    await FirebaseApp.requireAdmin();
-    await this.startDashboard();
+    const user = FirebaseApp.auth.currentUser;
+    await this._enterIfAdmin(user);
   },
 
   async handleLogin() {
     const email = document.getElementById('admin-email').value.trim();
     const password = document.getElementById('admin-password').value;
-    const { errorEl } = this._loginElements();
+    const { errorEl, noticeEl } = this._loginElements();
 
     errorEl.hidden = true;
+    if (noticeEl) noticeEl.hidden = true;
     this._setLoginBusy(true);
 
     try {
@@ -79,56 +121,79 @@ const Admin = {
       await this._completeLogin();
     } catch (err) {
       await FirebaseApp.auth.signOut().catch(() => {});
-      errorEl.textContent = this._loginErrorMessage(err);
-      errorEl.hidden = false;
+      this._showLoginError(err);
     } finally {
       this._setLoginBusy(false);
+    }
+  },
+
+  async handleForgotPassword() {
+    const email = document.getElementById('admin-email').value;
+    const check = Admin.validateResetEmail(email);
+    if (!check.ok) {
+      this._showLoginError({ code: 'auth/invalid-email' });
+      return;
+    }
+
+    const { loadingEl } = this._loginElements();
+    loadingEl.textContent = 'Αποστολή email...';
+    this._setLoginBusy(true);
+
+    try {
+      await this._sendPasswordReset(check.email);
+      this._showLoginNotice(Admin.passwordResetSentMessage());
+    } catch (err) {
+      if (err && err.code === 'auth/user-not-found') {
+        this._showLoginNotice(Admin.passwordResetSentMessage());
+      } else {
+        this._showLoginError(err);
+      }
+    } finally {
+      loadingEl.textContent = 'Έλεγχος κωδικού...';
+      this._setLoginBusy(false);
+    }
+  },
+
+  async _sendPasswordReset(email) {
+    const continueUrl = new URL('admin.html', window.location.href).href;
+    try {
+      await FirebaseApp.auth.sendPasswordResetEmail(email, {
+        url: continueUrl,
+        handleCodeInApp: false,
+      });
+    } catch (err) {
+      if (err && err.code === 'auth/unauthorized-continue-uri') {
+        await FirebaseApp.auth.sendPasswordResetEmail(email);
+        return;
+      }
+      throw err;
     }
   },
 
   async handleGoogleLogin() {
-    const { errorEl } = this._loginElements();
+    const { errorEl, loadingEl } = this._loginElements();
 
     errorEl.hidden = true;
+    loadingEl.textContent = 'Μεταφορά στη Google...';
     this._setLoginBusy(true);
 
     try {
       const provider = new firebase.auth.GoogleAuthProvider();
-      await FirebaseApp.auth.signInWithPopup(provider);
-      await this._completeLogin();
+      provider.setCustomParameters({ prompt: 'select_account' });
+      await FirebaseApp.auth.signInWithRedirect(provider);
     } catch (err) {
-      if (err && err.code === 'auth/popup-closed-by-user') {
-        return;
-      }
+      loadingEl.textContent = 'Έλεγχος κωδικού...';
       await FirebaseApp.auth.signOut().catch(() => {});
-      errorEl.textContent = this._loginErrorMessage(err);
-      errorEl.hidden = false;
-    } finally {
-      this._setLoginBusy(false);
+      this._showLoginError(err);
     }
   },
 
   _loginErrorMessage(err) {
-    const code = err && err.code;
-    if (code === 'auth/invalid-credential' || code === 'auth/wrong-password' || code === 'auth/user-not-found') {
-      return 'Λάθος email ή κωδικός πρόσβασης.';
-    }
-    if (code === 'auth/too-many-requests') {
-      return 'Πολλές αποτυχημένες προσπάθειες. Δοκιμάστε αργότερα.';
-    }
-    if (code === 'auth/popup-blocked') {
-      return 'Το αναδυόμενο παράθυρο αποκλείστηκε. Επιτρέψτε popups για αυτόν τον ιστότοπο.';
-    }
-    if (code === 'auth/account-exists-with-different-credential') {
-      return 'Υπάρχει ήδη λογαριασμός με αυτό το email. Χρησιμοποιήστε email/κωδικό.';
-    }
-    if (err.message && err.message.includes('admin')) {
-      return 'Ο λογαριασμός δεν έχει δικαιώματα admin.';
-    }
-    return 'Η σύνδεση απέτυχε. Δοκιμάστε ξανά.';
+    return Admin.loginErrorMessage(err);
   },
 
   async handleLogout() {
+    this.state.dashboardStarted = false;
     await FirebaseApp.auth.signOut();
     this.showLogin();
     this.showToast('Αποσυνδεθήκατε.');
@@ -150,6 +215,7 @@ const Admin = {
   async loadQuestionnaireDefs() {
     const manifestRes = await fetch('data/manifest.json');
     const manifest = await manifestRes.json();
+    this.state.battery = Battery.fromManifest(manifest);
     const defs = await Promise.all(
       manifest.questionnaires
         .sort((a, b) => a.order - b.order)
@@ -166,7 +232,10 @@ const Admin = {
       e.preventDefault();
       this.handleLogin();
     });
-    document.getElementById('btn-google-login').addEventListener('click', () => this.handleGoogleLogin());
+    document.getElementById('btn-forgot-password').addEventListener('click', () => this.handleForgotPassword());
+    // Google login is commented out in admin.html.
+    // const googleLoginBtn = document.getElementById('btn-google-login');
+    // if (googleLoginBtn) googleLoginBtn.addEventListener('click', () => this.handleGoogleLogin());
     document.getElementById('btn-logout').addEventListener('click', () => this.handleLogout());
     document.getElementById('btn-generate').addEventListener('click', () => this.generateQuestionnaire());
     document.getElementById('btn-clear-filters').addEventListener('click', () => this.clearFilters());
@@ -182,6 +251,10 @@ const Admin = {
     document.getElementById('btn-back-list').addEventListener('click', () => this.showDashboard());
     document.getElementById('search-input').addEventListener('input', () => this.applyFilters());
     document.getElementById('filter-status').addEventListener('change', () => {
+      this.applyFilters();
+      this.updateFilterIndicator();
+    });
+    document.getElementById('filter-battery').addEventListener('change', () => {
       this.applyFilters();
       this.updateFilterIndicator();
     });
@@ -216,8 +289,9 @@ const Admin = {
 
   updateFilterIndicator() {
     const status = document.getElementById('filter-status').value;
+    const battery = document.getElementById('filter-battery').value;
     const sort = document.getElementById('filter-sort').value;
-    const hasActive = status !== 'all' || sort !== 'issued-desc';
+    const hasActive = status !== 'all' || battery !== 'all' || sort !== 'issued-desc';
     const dot = document.getElementById('filter-active-dot');
     const toggle = document.getElementById('btn-filter-toggle');
     dot.hidden = !hasActive;
@@ -280,6 +354,7 @@ const Admin = {
       await FirebaseApp.requireAdmin();
       const snap = await FirebaseApp.db.collection('issued').get();
       this.state.patients = snap.docs.map((doc) => ({ ...doc.data(), code: doc.id }));
+      this.syncBatteryFilterOptions();
       this.applyFilters();
     } catch (err) {
       list.innerHTML = `<p class="error-text">${this.escape(err.message)}</p>`;
@@ -290,6 +365,7 @@ const Admin = {
   clearFilters() {
     document.getElementById('search-input').value = '';
     document.getElementById('filter-status').value = 'all';
+    document.getElementById('filter-battery').value = 'all';
     document.getElementById('filter-sort').value = 'issued-desc';
     this.updateFilterIndicator();
     this.applyFilters();
@@ -299,31 +375,19 @@ const Admin = {
   applyFilters() {
     const q = document.getElementById('search-input').value.trim().toLowerCase();
     const status = document.getElementById('filter-status').value;
+    const batteryId = document.getElementById('filter-battery').value;
     const sort = document.getElementById('filter-sort').value;
     this.updateFilterIndicator();
 
-    let filtered = [...this.state.patients];
-
-    if (status !== 'all') {
-      filtered = filtered.filter((p) => p.status === status);
-    }
-
-    if (q) {
-      const words = q.split(/\s+/).filter(Boolean);
-      filtered = filtered.filter((p) => {
-        const haystack = [
-          p.code,
-          p.date,
-          p.status,
-          this.renderStatusLabel(p.status),
-          p.issuedAt,
-          p.submittedAt,
-        ]
-          .join(' ')
-          .toLowerCase();
-        return words.every((w) => haystack.includes(w));
-      });
-    }
+    const filtered = this.state.patients.filter((patient) =>
+      Battery.matchesListFilters(patient, {
+        status,
+        batteryId,
+        query: q,
+        activeBattery: this.state.battery,
+        statusLabel: (value) => this.renderStatusLabel(value),
+      })
+    );
 
     filtered.sort((a, b) => this._comparePatientsForSort(a, b, sort));
 
@@ -365,6 +429,27 @@ const Admin = {
     return (a.code || '').localeCompare(b.code || '', 'el');
   },
 
+  syncBatteryFilterOptions() {
+    const select = document.getElementById('filter-battery');
+    if (!select) return;
+
+    const current = select.value || 'all';
+    const ids = new Set();
+    if (this.state.battery && this.state.battery.id) {
+      ids.add(this.state.battery.id);
+    }
+    this.state.patients.forEach((patient) => ids.add(Battery.resolveId(patient)));
+
+    const sorted = [...ids].sort((a, b) => a.localeCompare(b, 'en'));
+    select.innerHTML = [
+      '<option value="all">Όλα</option>',
+      ...sorted.map((id) => `<option value="${this.escape(id)}">${this.escape(id)}</option>`),
+    ].join('');
+
+    const allowed = new Set(['all', ...sorted]);
+    select.value = allowed.has(current) ? current : 'all';
+  },
+
   renderPatientList(patients) {
     const list = document.getElementById('patient-list');
 
@@ -374,12 +459,16 @@ const Admin = {
     }
 
     list.innerHTML = patients
-      .map(
-        (p) => `
+      .map((p) => {
+        const battery = Battery.uiLabel(p, this.state.battery);
+        return `
       <div class="patient-row-card">
         <button type="button" class="patient-row status-${p.status === 'submitted' ? 'submitted' : 'pending'}" data-code="${this.escape(p.code)}">
           <div class="patient-row-main">
-            <span class="patient-name">${this.escape(p.code)}</span>
+            <span class="patient-row-identity">
+              <span class="patient-name">${this.escape(p.code)}</span>
+              <span class="battery-badge" title="${this.escape(battery.name)}">${this.escape(battery.id)}</span>
+            </span>
             <span class="patient-date">${this.formatDate(p.date)}</span>
           </div>
           <div class="patient-row-meta">
@@ -393,8 +482,8 @@ const Admin = {
           ${this.renderDownloadIconButton('btn-inline-download', { disabled: p.status !== 'submitted', attrs: `data-code="${this.escape(p.code)}"` })}
         </div>
       </div>
-    `
-      )
+    `;
+      })
       .join('');
 
     list.querySelectorAll('.patient-row').forEach((row) => {
@@ -475,6 +564,7 @@ const Admin = {
 
   renderPatientDetail(data) {
     const { patient, questionnaires } = data;
+    const battery = Battery.uiLabel(patient, this.state.battery);
     const submissions = questionnaires.map((q) => {
       const id = q.id || this.guessId(q.title);
       const def = this.state.questionnaireDefs.find((d) => d.id === id);
@@ -502,6 +592,11 @@ const Admin = {
         <div class="overview-item">
           <span class="overview-label">Εκδόθηκε</span>
           <span class="overview-value">${this.formatDateTime(patient.issuedAt)}</span>
+        </div>
+        <div class="overview-item">
+          <span class="overview-label">Τύπος</span>
+          <span class="overview-value">${this.escape(battery.id)}</span>
+          <span class="overview-sub">${this.escape(battery.name)}</span>
         </div>
         <div class="overview-item">
           <span class="overview-label">Κατάσταση</span>
@@ -636,18 +731,20 @@ const Admin = {
 
       const code = await QuestionnaireAPI.generateUniqueCode();
       const issuedAt = new Date().toISOString();
-      await FirebaseApp.db.collection('issued').doc(code).set({
+      const issued = QuestionnaireAPI.buildIssuedRecord({
         code,
         date,
         issuedAt,
-        status: 'pending',
-        submittedAt: '',
+        battery: this.state.battery,
       });
+      await FirebaseApp.db.collection('issued').doc(code).set(issued);
 
+      const battery = Battery.uiLabel(issued, this.state.battery);
       const link = this.buildPatientLink(code, date);
       resultEl.innerHTML = `
         <div class="generated-card">
           <p><strong>Κωδικός:</strong> ${this.escape(code)}</p>
+          <p><strong>Τύπος:</strong> ${this.escape(battery.id)} <span class="generated-battery-name">${this.escape(battery.name)}</span></p>
           <p><strong>Ημερομηνία:</strong> ${this.escape(this.formatDate(date))}</p>
           <p><strong>Link:</strong> <a href="${this.escape(link)}" target="_blank" rel="noopener">${this.escape(link)}</a></p>
           ${this.renderCopyIconButton('', 'id="btn-copy-generated"')}
@@ -751,4 +848,51 @@ const Admin = {
   },
 };
 
-document.addEventListener('DOMContentLoaded', () => Admin.init());
+Admin.loginErrorMessage = function loginErrorMessage(err) {
+  const code = err && err.code;
+  if (code === 'auth/invalid-email') {
+    return 'Συμπληρώστε ένα έγκυρο email.';
+  }
+  if (code === 'auth/invalid-credential' || code === 'auth/wrong-password' || code === 'auth/user-not-found') {
+    return 'Λάθος email ή κωδικός πρόσβασης.';
+  }
+  if (code === 'auth/too-many-requests') {
+    return 'Πολλές αποτυχημένες προσπάθειες. Δοκιμάστε αργότερα.';
+  }
+  if (code === 'auth/popup-blocked' || code === 'auth/popup-closed-by-user') {
+    return 'Η σύνδεση Google διακόπηκε. Δοκιμάστε ξανά.';
+  }
+  if (code === 'auth/unauthorized-domain') {
+    return 'Αυτός ο τομέας δεν επιτρέπεται στο Firebase Auth. Προσθέστε τον στα Authorized domains.';
+  }
+  if (code === 'auth/web-storage-unsupported') {
+    return 'Ο browser μπλοκάρει τα cookies που χρειάζεται η σύνδεση Google.';
+  }
+  if (code === 'auth/account-exists-with-different-credential') {
+    return 'Υπάρχει ήδη λογαριασμός με αυτό το email. Χρησιμοποιήστε email/κωδικό.';
+  }
+  if (err && err.message && err.message.includes('admin')) {
+    return 'Ο λογαριασμός δεν έχει δικαιώματα admin.';
+  }
+  return 'Η σύνδεση απέτυχε. Δοκιμάστε ξανά.';
+};
+
+Admin.validateResetEmail = function validateResetEmail(value) {
+  const email = String(value || '').trim();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return { ok: false, email: '' };
+  }
+  return { ok: true, email };
+};
+
+Admin.passwordResetSentMessage = function passwordResetSentMessage() {
+  return 'Στάλθηκε σύνδεσμος επαναφοράς στο email σας. Ελέγξτε και τα ανεπιθύμητα.';
+};
+
+if (typeof document !== 'undefined') {
+  document.addEventListener('DOMContentLoaded', () => Admin.init());
+}
+
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = { Admin };
+}

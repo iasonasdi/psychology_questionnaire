@@ -6,6 +6,7 @@ const App = {
     patient: null,
     currentIndex: 0,
     questionnaires: [],
+    battery: null,
     answers: {},
   },
 
@@ -108,6 +109,7 @@ const App = {
   async _loadQuestionnaires() {
     const manifestRes = await fetch('data/manifest.json');
     const manifest = await manifestRes.json();
+    this.state.battery = Battery.fromManifest(manifest);
 
     const loaded = await Promise.all(
       manifest.questionnaires
@@ -317,7 +319,8 @@ const App = {
       await QuestionnaireAPI.submitWithFallback(
         this.state.patient,
         this.state.questionnaires,
-        this.state.answers
+        this.state.answers,
+        this.state.battery
       );
 
       this.elements.successDetail.textContent =

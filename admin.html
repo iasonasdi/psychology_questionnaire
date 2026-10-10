@@ -31,7 +31,8 @@
     <section id="admin-login" class="admin-screen">
       <div class="card login-card">
         <h2>Σύνδεση Διαχειριστή</h2>
-        <p class="welcome-text">Συνδεθείτε με Google ή με email και κωδικό admin.</p>
+        <p class="welcome-text">Συνδεθείτε με email και κωδικό admin.</p>
+        <!--
         <button type="button" class="btn btn-google btn-lg" id="btn-google-login">
           <svg class="google-icon" width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">
             <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
@@ -42,6 +43,7 @@
           Σύνδεση με Google
         </button>
         <div class="login-divider" aria-hidden="true"><span>ή</span></div>
+        -->
         <form id="login-form" class="patient-form">
           <div class="form-group">
             <label for="admin-email">Email</label>
@@ -51,9 +53,11 @@
             <label for="admin-password">Κωδικός</label>
             <input type="password" id="admin-password" required autocomplete="current-password">
           </div>
+          <button type="button" class="login-forgot" id="btn-forgot-password">Ξεχάσατε τον κωδικό;</button>
           <button type="submit" class="btn btn-primary btn-lg" id="login-submit">Είσοδος</button>
         </form>
         <p class="login-loading" id="login-loading" hidden>Έλεγχος κωδικού...</p>
+        <p class="login-notice" id="login-notice" hidden></p>
         <p class="login-error" id="login-error" hidden>Λάθος κωδικός πρόσβασης.</p>
       </div>
     </section>
@@ -90,7 +94,7 @@
       <div class="card admin-search-card">
         <h2>Αναζήτηση &amp; Φίλτρα</h2>
         <div class="search-toolbar">
-          <input type="search" id="search-input" class="search-input" placeholder="Κωδικός, κατάσταση ή ημερομηνία…" autocomplete="off">
+          <input type="search" id="search-input" class="search-input" placeholder="Κωδικός, τύπος, κατάσταση ή ημερομηνία…" autocomplete="off">
           <div class="filter-dropdown-wrap">
             <button
               type="button"
@@ -114,6 +118,12 @@
                   <option value="all">Όλα</option>
                   <option value="pending">Εκκρεμεί</option>
                   <option value="submitted">Υποβλήθηκε</option>
+                </select>
+              </div>
+              <div class="filter-group">
+                <label for="filter-battery">Τύπος</label>
+                <select id="filter-battery" class="filter-select">
+                  <option value="all">Όλα</option>
                 </select>
               </div>
               <div class="filter-group">
@@ -171,6 +181,7 @@
   <script src="js/config.example.js"></script>
   <script src="js/config.js"></script>
   <script src="js/firebase-init.js"></script>
+  <script src="js/battery.js"></script>
   <script src="js/questionnaire-api.js"></script>
   <script src="js/scoring.js"></script>
   <script src="js/excel-export.js"></script>

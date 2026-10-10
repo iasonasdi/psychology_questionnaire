@@ -20,7 +20,12 @@ service cloud.firestore {
         && request.resource.data.date is string
         && request.resource.data.date.matches('^\\d{4}-\\d{2}-\\d{2}$')
         && request.resource.data.issuedAt is string
-        && request.resource.data.keys().hasAll(['code', 'date', 'issuedAt', 'status']);
+        && request.resource.data.batteryId is string
+        && request.resource.data.batteryId.matches('^[A-Z][A-Z0-9_]{1,39}$')
+        && request.resource.data.batteryName is string
+        && request.resource.data.batteryName.size() > 0
+        && request.resource.data.batteryName.size() <= 120
+        && request.resource.data.keys().hasAll(['code', 'date', 'issuedAt', 'status', 'batteryId', 'batteryName']);
     }
 
     function canPatientCompleteIssued(code) {
@@ -39,7 +44,12 @@ service cloud.firestore {
         && request.resource.id == code
         && request.resource.data.code == code
         && request.resource.data.submittedAt is string
-        && request.resource.data.keys().hasAll(['code', 'submittedAt', 'patient', 'questionnaires'])
+        && request.resource.data.batteryId is string
+        && request.resource.data.batteryId.matches('^[A-Z][A-Z0-9_]{1,39}$')
+        && request.resource.data.batteryName is string
+        && request.resource.data.batteryName.size() > 0
+        && request.resource.data.batteryName.size() <= 120
+        && request.resource.data.keys().hasAll(['code', 'submittedAt', 'patient', 'questionnaires', 'batteryId', 'batteryName'])
         && request.resource.data.patient.code == code
         && request.resource.data.questionnaires is list
         && request.resource.data.questionnaires.size() >= 1

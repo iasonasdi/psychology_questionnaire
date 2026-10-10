@@ -129,8 +129,11 @@ const ExcelExport = {
     sheet.mergeCells(row, 1, row, 3);
     row += 2;
 
+    const battery = Battery.uiLabel(patient, null);
     const meta = [
       ['Κωδικός', patient.code || ''],
+      ['Τύπος', battery.id],
+      ['Ονομασία', patient.batteryName || battery.name],
       ['Ημερομηνία', patient.date || ''],
       ['Εκδόθηκε', this._formatDisplayDate(patient.issuedAt)],
       ['Κατάσταση', patient.status === 'submitted' ? 'Υποβλήθηκε' : 'Εκκρεμεί'],
@@ -278,3 +281,7 @@ const ExcelExport = {
     }
   },
 };
+
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = { ExcelExport };
+}

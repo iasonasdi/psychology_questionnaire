@@ -2,6 +2,12 @@
   "title": "Ερωτηματολόγια Ασθενούς",
   "subtitle": "Δρ. Παπαθεοδοσίου — Ψυχίατρος - Υπνίατρος",
   "language": "el",
+  "battery": {
+    "id": "CPAB_V1",
+    "name": "Comprehensive Psychiatric Assessment Battery",
+    "nameEl": "Ολοκληρωμένη ψυχιατρική αξιολόγηση",
+    "category": "Transdiagnostic Intake"
+  },
   "questionnaires": [
     {
       "id": "q01-adhd",
