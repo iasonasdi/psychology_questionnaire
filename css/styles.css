@@ -79,6 +79,13 @@ body {
   color: var(--color-text-muted);
 }
 
+.header-affiliation {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--color-teal);
+  line-height: 1.3;
+}
+
 /* Main */
 .container {
   flex: 1;

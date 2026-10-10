@@ -55,6 +55,22 @@ const ExcelExport = {
     return value === '' || value === undefined || value === null ? '-' : value;
   },
 
+  _usesSubscaleColumn(def) {
+    return (def.questions || []).some((q) => q.subscale === 'A' || q.subscale === 'D');
+  },
+
+  _answerHeaders(def) {
+    const headers = ['Ερώτηση', 'Απάντηση', 'Τιμή'];
+    if (this._usesSubscaleColumn(def)) headers.unshift('A/D');
+    return headers;
+  },
+
+  _answerCellValues(def, row) {
+    const values = [row.question, row.answer, this._exportValue(row.value)];
+    if (this._usesSubscaleColumn(def)) values.unshift(row.subscale || '');
+    return values;
+  },
+
   _formatDisplayDate(iso) {
     if (!iso) return '—';
     try {
@@ -191,17 +207,16 @@ const ExcelExport = {
       views: [{ state: 'frozen', ySplit: 3 }],
     });
 
-    sheet.columns = [
-      { width: 58 },
-      { width: 28 },
-      { width: 12 },
-    ];
+    const headers = this._answerHeaders(def);
+    const colCount = headers.length;
+    const columnWidths = { 'A/D': 10, 'Ερώτηση': 58, 'Απάντηση': 28, 'Τιμή': 12 };
+    sheet.columns = headers.map((header) => ({ width: columnWidths[header] }));
 
     let row = 1;
     const titleRow = sheet.getRow(row);
     titleRow.getCell(1).value = def.title;
     titleRow.getCell(1).font = { bold: true, size: 14, color: { argb: this.COLORS.navy } };
-    sheet.mergeCells(row, 1, row, 3);
+    sheet.mergeCells(row, 1, row, colCount);
     row += 1;
 
     if (def.instructions) {
@@ -209,14 +224,14 @@ const ExcelExport = {
       introRow.getCell(1).value = def.instructions;
       introRow.getCell(1).font = { italic: true, color: { argb: 'FF5C5C7A' } };
       introRow.getCell(1).alignment = { wrapText: true };
-      sheet.mergeCells(row, 1, row, 3);
+      sheet.mergeCells(row, 1, row, colCount);
       row += 1;
     }
 
     row += 1;
     const tableStart = row;
     const headerRow = sheet.getRow(row);
-    ['Ερώτηση', 'Απάντηση', 'Τιμή'].forEach((text, i) => {
+    headers.forEach((text, i) => {
       const cell = headerRow.getCell(i + 1);
       cell.value = text;
       cell.font = { bold: true, color: { argb: this.COLORS.navy } };
@@ -230,19 +245,17 @@ const ExcelExport = {
     const answerRows = Scoring.formatAnswersForDisplay(def, answers);
     answerRows.forEach((r) => {
       const dataRow = sheet.getRow(row);
-      dataRow.getCell(1).value = r.subscale ? `${r.subscale} — ${r.question}` : r.question;
-      dataRow.getCell(2).value = r.answer;
-      dataRow.getCell(3).value = this._exportValue(r.value);
-      [1, 2, 3].forEach((col) => {
-        const cell = dataRow.getCell(col);
+      this._answerCellValues(def, r).forEach((value, i) => {
+        const cell = dataRow.getCell(i + 1);
+        cell.value = value;
         cell.border = this._thinBorder();
-        cell.alignment = { vertical: 'top', wrapText: col === 1 };
+        cell.alignment = { vertical: 'top', wrapText: headers[i] === 'Ερώτηση' };
       });
       row += 1;
     });
 
     if (answerRows.length) {
-      this._applyTableBorders(sheet, tableStart, row - 1, 1, 3);
+      this._applyTableBorders(sheet, tableStart, row - 1, 1, colCount);
     }
 
     if (def.id === 'q06-hads') {
