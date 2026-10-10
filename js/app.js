@@ -63,7 +63,7 @@ const App = {
     this.elements.btnSubmit.addEventListener('click', () => this._submitAll());
 
     this.elements.gdprCheckbox.addEventListener('change', () => {
-      this.elements.btnSubmit.disabled = !this.elements.gdprCheckbox.checked;
+      document.getElementById('btn-start').disabled = !this.elements.gdprCheckbox.checked;
       this.elements.gdprConsent.classList.remove('invalid');
     });
 
@@ -107,7 +107,7 @@ const App = {
   },
 
   async _loadQuestionnaires() {
-    const manifestRes = await fetch('data/manifest.json');
+    const manifestRes = await fetch('data/manifest.json', { cache: 'no-store' });
     const manifest = await manifestRes.json();
     this.state.battery = Battery.fromManifest(manifest);
 
@@ -115,7 +115,7 @@ const App = {
       manifest.questionnaires
         .sort((a, b) => a.order - b.order)
         .map(async (entry) => {
-          const res = await fetch(`data/${entry.file}`);
+          const res = await fetch(`data/${entry.file}`, { cache: 'no-store' });
           return res.json();
         })
     );
@@ -171,6 +171,12 @@ const App = {
       return;
     }
 
+    if (!this.elements.gdprCheckbox.checked) {
+      this.elements.gdprConsent.classList.add('invalid');
+      this._showToast('Παρακαλώ δηλώστε ότι λάβατε γνώση της ενημέρωσης πριν συνεχίσετε.', true);
+      return;
+    }
+
     codeInput.classList.remove('error');
     errorEl.hidden = true;
     submitBtn.disabled = true;
@@ -193,7 +199,7 @@ const App = {
       errorEl.hidden = false;
       this._showToast(err.message, true);
     } finally {
-      submitBtn.disabled = false;
+      submitBtn.disabled = !this.elements.gdprCheckbox.checked;
       submitBtn.textContent = originalLabel;
     }
   },
@@ -289,9 +295,6 @@ const App = {
 
     this.elements.reviewSummary.innerHTML = html;
     this.elements.progressFill.style.width = '100%';
-    this.elements.gdprCheckbox.checked = false;
-    this.elements.btnSubmit.disabled = true;
-    this.elements.gdprConsent.classList.remove('invalid');
     this._showScreen('review');
   },
 
@@ -306,13 +309,6 @@ const App = {
   },
 
   async _submitAll() {
-    if (!this.elements.gdprCheckbox.checked) {
-      this.elements.gdprConsent.classList.add('invalid');
-      this._showToast('Παρακαλώ αποδεχτείτε την Πολιτική Απορρήτου πριν την υποβολή.', true);
-      this.elements.gdprConsent.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      return;
-    }
-
     this.elements.loadingOverlay.hidden = false;
 
     try {

@@ -166,12 +166,6 @@ const Renderer = {
   _renderHads(container, data, answers) {
     data.questions.forEach((q, i) => {
       const block = this._createQuestionBlock(i + 1, q.text, q.id);
-
-      const subscaleBadge = document.createElement('span');
-      subscaleBadge.className = `subscale-badge subscale-${q.subscale}`;
-      subscaleBadge.textContent = q.subscale;
-      block.querySelector('.question-text span:last-child').appendChild(subscaleBadge);
-
       block.appendChild(this._createOptionGroup(q.id, q.options, answers[q.id], 'likert-scale'));
       container.appendChild(block);
     });

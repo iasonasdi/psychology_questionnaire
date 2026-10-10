@@ -889,6 +889,27 @@ button.has-tooltip:focus-visible::before,
   border-bottom: none;
 }
 
+.subscale-badge {
+  display: inline-block;
+  font-size: 0.7rem;
+  font-weight: 700;
+  line-height: 1.2;
+  padding: 0.12rem 0.4rem;
+  border-radius: 4px;
+  margin-right: 0.45rem;
+  vertical-align: middle;
+}
+
+.subscale-A {
+  background: #fff3cd;
+  color: #856404;
+}
+
+.subscale-D {
+  background: #d1ecf1;
+  color: #0c5460;
+}
+
 .answer-pill {
   display: inline-block;
   background: var(--color-teal-light);

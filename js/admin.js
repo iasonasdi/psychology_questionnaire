@@ -213,14 +213,14 @@ const Admin = {
   },
 
   async loadQuestionnaireDefs() {
-    const manifestRes = await fetch('data/manifest.json');
+    const manifestRes = await fetch('data/manifest.json', { cache: 'no-store' });
     const manifest = await manifestRes.json();
     this.state.battery = Battery.fromManifest(manifest);
     const defs = await Promise.all(
       manifest.questionnaires
         .sort((a, b) => a.order - b.order)
         .map(async (entry) => {
-          const res = await fetch(`data/${entry.file}`);
+          const res = await fetch(`data/${entry.file}`, { cache: 'no-store' });
           return res.json();
         })
     );
@@ -675,7 +675,7 @@ const Admin = {
                     (r, i) => `
                   <tr>
                     <td>${i + 1}</td>
-                    <td>${this.escape(r.question)}</td>
+                    <td>${r.subscale ? `<span class="subscale-badge subscale-${this.escape(r.subscale)}">${this.escape(r.subscale)}</span>` : ''}${this.escape(r.question)}</td>
                     <td><span class="answer-pill">${this.escape(r.answer)}</span></td>
                   </tr>`
                   )

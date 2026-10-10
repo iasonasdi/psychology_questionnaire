@@ -370,26 +370,6 @@ body {
   gap: 0.25rem;
 }
 
-.subscale-badge {
-  display: inline-block;
-  font-size: 0.7rem;
-  font-weight: 700;
-  padding: 0.15rem 0.5rem;
-  border-radius: 4px;
-  margin-left: 0.5rem;
-  vertical-align: middle;
-}
-
-.subscale-A {
-  background: #fff3cd;
-  color: #856404;
-}
-
-.subscale-D {
-  background: #d1ecf1;
-  color: #0c5460;
-}
-
 /* Radio options */
 .options-row {
   display: flex;
@@ -583,6 +563,10 @@ body {
 }
 
 /* GDPR consent */
+.patient-form .gdpr-consent {
+  margin-top: 0;
+}
+
 .gdpr-consent {
   margin-top: 1.25rem;
   padding: 1rem 1.25rem;
@@ -766,6 +750,27 @@ body {
 
 .site-footer a:hover {
   text-decoration: underline;
+}
+
+.footer-links {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 0.4rem 1.1rem;
+  margin-top: 0.45rem;
+}
+
+.footer-links a {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.footer-links svg {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
 }
 
 /* Toast */

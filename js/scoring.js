@@ -336,7 +336,9 @@ const Scoring = {
     const rows = [];
     (def.questions || []).forEach((q) => {
       const row = this._buildAnswerRow(def, q.id, q.text, answers[q.id]);
-      if (row) rows.push(row);
+      if (!row) return;
+      if (q.subscale === 'A' || q.subscale === 'D') row.subscale = q.subscale;
+      rows.push(row);
     });
     return rows;
   },
