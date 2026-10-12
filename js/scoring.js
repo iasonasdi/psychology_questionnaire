@@ -88,11 +88,11 @@ const Scoring = {
 
   _isi(answers) {
     const keys = [
-      'satisfaction.sleep_satisfaction',
-      'impact.daily_impact',
       'severity.difficulty_falling',
       'severity.difficulty_staying',
       'severity.early_waking',
+      'satisfaction.sleep_satisfaction',
+      'impact.daily_impact',
       'noticeability.noticeable_to_others',
       'worry.sleep_worry',
     ];
